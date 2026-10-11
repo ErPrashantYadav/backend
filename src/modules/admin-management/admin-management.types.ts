@@ -49,6 +49,23 @@ export const ADMIN_PERMISSION_KEYS = [
   'promo-codes.delete',
   'audit-logs.read',
   'dashboard.read',
+  'customers.read',
+  'contact-inquiries.read',
+  'contact-inquiries.update',
+  'banners.read',
+  'banners.create',
+  'banners.update',
+  'banners.delete',
+  'gallery.read',
+  'gallery.create',
+  'gallery.update',
+  'gallery.delete',
+  'settings.read',
+  'settings.update',
+  'social-media.read',
+  'social-media.create',
+  'social-media.update',
+  'social-media.delete',
 ] as const;
 
 export interface ManagedAdmin {

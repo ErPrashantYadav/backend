@@ -2,8 +2,8 @@ import crypto from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../errors/app-error';
 import type { CartRepository } from '../cart/cart.types';
-import { calculateDiscountedPrice } from '../catalog/catalog.service';
-import type { CatalogRepository } from '../catalog/catalog.types';
+import { calculateDiscountedPrice } from '../../utils/discount';
+import type { ProductRepository } from '../products/products.types';
 import type { PaymentMethodRepository } from '../payment-method/payment-method.types';
 import { PromoCodeService } from '../promo-code/promo-code.service';
 import type {
@@ -55,7 +55,7 @@ function maskAddress(address: string): string {
 export class CheckoutService {
   constructor(
     private readonly checkoutRepository: CheckoutRepository,
-    private readonly catalogRepository: CatalogRepository,
+    private readonly productRepository: ProductRepository,
     private readonly cartRepository?: CartRepository,
     public readonly deliveryFeeEstimator: DeliveryFeeEstimator = new ZeroDeliveryFeeEstimator(),
     public readonly paymentGateway?: PaymentGateway,
@@ -95,7 +95,7 @@ export class CheckoutService {
   private async findVariantAndProduct(variantId: string) {
     let page = 1;
     while (true) {
-      const productList = await this.catalogRepository.listProducts({
+      const productList = await this.productRepository.listProducts({
         page,
         pageSize: 100,
       });

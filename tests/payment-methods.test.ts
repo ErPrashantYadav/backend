@@ -13,8 +13,7 @@ import type {
   PageResult,
   ProductImageRecord,
   ProductRecord,
-  ProductVariantRecord,
-} from '../src/modules/catalog/catalog.types';
+} from './test-catalog';
 import { MemoryCheckoutRepository } from '../src/modules/checkout/memory-checkout.repository';
 import type { InventoryMovementRecord } from '../src/modules/inventory/inventory.types';
 import type { MemoryVariantItem } from '../src/modules/inventory/memory-inventory.repository';

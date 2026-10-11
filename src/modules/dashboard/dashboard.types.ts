@@ -97,4 +97,3 @@ export interface DashboardRepository {
   }): Promise<BestSellingItem[]>;
   getLowStockSummary(limit?: number): Promise<LowStockSummary>;
 }
-

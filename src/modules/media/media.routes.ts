@@ -90,14 +90,14 @@ export function createAdminMediaRouter(
       const bodyPurpose =
         (request.body.purpose as string) || (request.query.purpose as string);
       const purposeParsed = z
-        .enum(['PRODUCT_IMAGE', 'PAYMENT_QR'])
+        .enum(['PRODUCT_IMAGE', 'PAYMENT_QR', 'BANNER_IMAGE', 'GALLERY_IMAGE'])
         .safeParse(bodyPurpose);
 
       if (!purposeParsed.success) {
         throw new AppError(
           400,
           'INVALID_UPLOAD_PURPOSE',
-          'Upload purpose must be PRODUCT_IMAGE or PAYMENT_QR',
+          'Upload purpose must be PRODUCT_IMAGE, PAYMENT_QR, BANNER_IMAGE, or GALLERY_IMAGE',
         );
       }
       const purpose: UploadPurpose = purposeParsed.data;
@@ -117,7 +117,7 @@ export function createAdminMediaRouter(
             'Permission catalog.product-images.create or update required for product image upload',
           );
         }
-      } else {
+      } else if (purpose === 'PAYMENT_QR') {
         const hasPaymentPerm =
           adminPermissions.includes('payment-methods.create') ||
           adminPermissions.includes('payment-methods.update') ||
@@ -127,6 +127,30 @@ export function createAdminMediaRouter(
             403,
             'FORBIDDEN',
             'Permission payment-methods.create or update required for payment QR upload',
+          );
+        }
+      } else if (purpose === 'BANNER_IMAGE') {
+        const hasBannerPerm =
+          adminPermissions.includes('banners.create') ||
+          adminPermissions.includes('banners.update') ||
+          adminPermissions.includes('media.upload');
+        if (!hasBannerPerm) {
+          throw new AppError(
+            403,
+            'FORBIDDEN',
+            'Permission banners.create or update required for banner image upload',
+          );
+        }
+      } else {
+        const hasGalleryPerm =
+          adminPermissions.includes('gallery.create') ||
+          adminPermissions.includes('gallery.update') ||
+          adminPermissions.includes('media.upload');
+        if (!hasGalleryPerm) {
+          throw new AppError(
+            403,
+            'FORBIDDEN',
+            'Permission gallery.create or update required for gallery image upload',
           );
         }
       }

@@ -5,7 +5,7 @@ import { AppError } from '../../errors/app-error';
 import { validateBody } from '../../middleware/validate';
 import { successResponse } from '../../utils/response';
 import type { CartRepository } from '../cart/cart.types';
-import type { CatalogRepository } from '../catalog/catalog.types';
+import type { ProductRepository } from '../products/products.types';
 import type { PaymentMethodRepository } from '../payment-method/payment-method.types';
 import type { PromoCodeService } from '../promo-code/promo-code.service';
 import type { PromoCodeRepository } from '../promo-code/promo-code.types';
@@ -94,7 +94,7 @@ const checkoutSchema = z.object({
 
 export function createCheckoutRouter(
   checkoutRepository: CheckoutRepository,
-  catalogRepository: CatalogRepository,
+  productRepository: ProductRepository,
   cartRepository?: CartRepository,
   paymentMethodRepository?: PaymentMethodRepository,
   deliveryFeeEstimator?: DeliveryFeeEstimator,
@@ -104,7 +104,7 @@ export function createCheckoutRouter(
   const router = Router();
   const service = new CheckoutService(
     checkoutRepository,
-    catalogRepository,
+    productRepository,
     cartRepository,
     deliveryFeeEstimator,
     undefined,

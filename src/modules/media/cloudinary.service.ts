@@ -27,7 +27,7 @@ export class CloudinaryService {
       throw new AppError(
         400,
         'INVALID_UPLOAD_PURPOSE',
-        'Upload purpose must be PRODUCT_IMAGE or PAYMENT_QR',
+        'Upload purpose must be PRODUCT_IMAGE, PAYMENT_QR, BANNER_IMAGE, or GALLERY_IMAGE',
       );
     }
 
@@ -37,7 +37,11 @@ export class CloudinaryService {
     const folder =
       purpose === 'PRODUCT_IMAGE'
         ? this.config.CLOUDINARY_PRODUCT_FOLDER || 'liquor_shop/products'
-        : this.config.CLOUDINARY_PAYMENT_QR_FOLDER || 'liquor_shop/payment_qr';
+        : purpose === 'PAYMENT_QR'
+          ? this.config.CLOUDINARY_PAYMENT_QR_FOLDER || 'liquor_shop/payment_qr'
+          : purpose === 'BANNER_IMAGE'
+            ? this.config.CLOUDINARY_BANNER_FOLDER || 'liquor_shop/banners'
+            : this.config.CLOUDINARY_GALLERY_FOLDER || 'liquor_shop/gallery';
 
     // Generate random asset ID to strictly prevent collisions and accidental overwriting
     const randomAssetId = crypto.randomUUID();
@@ -113,6 +117,8 @@ export class CloudinaryService {
     const allowedFolders = [
       this.config.CLOUDINARY_PRODUCT_FOLDER || 'liquor_shop/products',
       this.config.CLOUDINARY_PAYMENT_QR_FOLDER || 'liquor_shop/payment_qr',
+      this.config.CLOUDINARY_BANNER_FOLDER || 'liquor_shop/banners',
+      this.config.CLOUDINARY_GALLERY_FOLDER || 'liquor_shop/gallery',
     ];
 
     const isAllowedFolder = allowedFolders.some(

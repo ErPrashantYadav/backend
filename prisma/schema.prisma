@@ -124,33 +124,38 @@ model RolePermission {
 }
 
 model Category {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @db.VarChar(120)
-  slug        String   @unique @db.VarChar(160)
-  description String?  @db.Text
-  imageUrl    String?  @db.VarChar(2048)
-  isActive    Boolean
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(120)
+  slug         String   @unique @db.VarChar(160)
+  description  String?  @db.Text
+  imageUrl     String?  @db.VarChar(2048)
+  displayOrder Int      @default(0)
+  isActive     Boolean
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
   products Product[]
 
   @@index([isActive, name])
+  @@index([isActive, displayOrder])
 }
 
 model Brand {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @db.VarChar(120)
-  slug      String   @unique @db.VarChar(160)
-  logoUrl   String?  @db.VarChar(2048)
-  isActive  Boolean
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(120)
+  slug         String   @unique @db.VarChar(160)
+  logoUrl      String?  @db.VarChar(2048)
+  displayOrder Int      @default(0)
+  isActive     Boolean
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
   products Product[]
 
   @@index([isActive, name])
+  @@index([isActive, displayOrder])
 }
+
 
 model Product {
   id            String        @id @default(uuid()) @db.Uuid
@@ -482,3 +487,108 @@ model PromoCodeRedemption {
   @@index([orderId])
   @@index([createdAt])
 }
+
+enum ContactInquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model ContactInquiry {
+  id         String               @id @default(uuid()) @db.Uuid
+  name       String               @db.VarChar(180)
+  phone      String               @db.VarChar(32)
+  email      String?              @db.VarChar(254)
+  subject    String               @db.VarChar(200)
+  message    String               @db.Text
+  status     ContactInquiryStatus @default(NEW)
+  adminNote  String?              @db.Text
+  resolvedAt DateTime?            @db.Timestamptz(3)
+  createdAt  DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime             @updatedAt @db.Timestamptz(3)
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([phone])
+  @@index([email])
+}
+
+model Banner {
+  id           String    @id @default(uuid()) @db.Uuid
+  title        String    @db.VarChar(180)
+  description  String?   @db.Text
+  imageUrl     String    @db.VarChar(2048)
+  publicId     String?   @db.VarChar(255)
+  linkUrl      String?   @db.VarChar(2048)
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  startDate    DateTime? @db.Timestamptz(3)
+  endDate      DateTime? @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive, displayOrder])
+  @@index([startDate, endDate])
+  @@index([createdAt])
+}
+
+model GalleryItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  title        String   @db.VarChar(180)
+  description  String?  @db.Text
+  imageUrl     String   @db.VarChar(2048)
+  publicId     String?  @db.VarChar(255)
+  category     String?  @db.VarChar(100)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive, displayOrder])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model StoreSettings {
+  id                    String    @id @default("default") @db.VarChar(50)
+  storeName             String    @default("Old Liquor") @db.VarChar(180)
+  storeTagline          String?   @db.VarChar(255)
+  primaryPhone          String    @default("+977-9801234567") @db.VarChar(50)
+  secondaryPhone        String?   @db.VarChar(50)
+  supportEmail          String    @default("support@oldliquor.com") @db.VarChar(255)
+  address               String    @default("Kathmandu, Nepal") @db.VarChar(255)
+  city                  String    @default("Kathmandu") @db.VarChar(100)
+  locationUrl           String?   @db.VarChar(2048)
+  socialLinks           Json?     @db.JsonB
+  businessHours         Json      @db.JsonB
+  announcementText      String?   @db.Text
+  announcementActive    Boolean   @default(false)
+  announcementStartDate DateTime? @db.Timestamptz(3)
+  announcementEndDate   DateTime? @db.Timestamptz(3)
+  timezone              String    @default("Asia/Kathmandu") @db.VarChar(50)
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+model SocialMedia {
+  id           String   @id @default(uuid()) @db.Uuid
+  platform     String   @db.VarChar(50)
+  url          String   @db.VarChar(2048)
+  type         String   @default("video") @db.VarChar(20)
+  label        String?  @db.VarChar(180)
+  thumbnailUrl String?  @db.VarChar(2048)
+  publicId     String?  @db.VarChar(255)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([platform])
+  @@index([type, isActive])
+  @@index([isActive, displayOrder])
+  @@index([createdAt])
+}
+
+
+

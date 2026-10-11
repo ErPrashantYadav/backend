@@ -5,7 +5,7 @@ import { validateBody } from '../../middleware/validate';
 import { successResponse } from '../../utils/response';
 import { CartService } from './cart.service';
 import type { CartRepository } from './cart.types';
-import type { CatalogRepository } from '../catalog/catalog.types';
+import type { ProductRepository } from '../products/products.types';
 
 function asyncHandler(
   handler: (
@@ -54,10 +54,10 @@ function requireCartToken(request: Request): string {
 
 export function createCartRouter(
   cartRepository: CartRepository,
-  catalogRepository: CatalogRepository,
+  productRepository: ProductRepository,
 ): Router {
   const router = Router();
-  const service = new CartService(cartRepository, catalogRepository);
+  const service = new CartService(cartRepository, productRepository);
 
   router.get(
     '/',

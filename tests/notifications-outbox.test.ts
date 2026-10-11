@@ -14,8 +14,7 @@ import type {
   PageResult,
   ProductImageRecord,
   ProductRecord,
-  ProductVariantRecord,
-} from '../src/modules/catalog/catalog.types';
+} from './test-catalog';
 import { MemoryCheckoutRepository } from '../src/modules/checkout/memory-checkout.repository';
 import { MemoryOrderManagementRepository } from '../src/modules/order-management/memory-order-management.repository';
 import { MemoryNotificationOutboxRepository } from '../src/modules/notifications/memory-notification-outbox.repository';

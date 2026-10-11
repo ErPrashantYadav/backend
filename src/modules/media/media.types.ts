@@ -1,4 +1,5 @@
-export type UploadPurpose = 'PRODUCT_IMAGE' | 'PAYMENT_QR';
+export type UploadPurpose =
+  'PRODUCT_IMAGE' | 'PAYMENT_QR' | 'BANNER_IMAGE' | 'GALLERY_IMAGE';
 
 export interface PurposeConfig {
   maxSizeBytes: number;
@@ -22,6 +23,20 @@ export const UPLOAD_PURPOSE_CONFIG: Record<UploadPurpose, PurposeConfig> = {
     allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
     tag: 'payment_qr',
     defaultFolder: 'liquor_shop/payment_qr',
+  },
+  BANNER_IMAGE: {
+    maxSizeBytes: 8 * 1024 * 1024, // 8 MB
+    allowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    tag: 'banner_image',
+    defaultFolder: 'liquor_shop/banners',
+  },
+  GALLERY_IMAGE: {
+    maxSizeBytes: 8 * 1024 * 1024, // 8 MB
+    allowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    tag: 'gallery_image',
+    defaultFolder: 'liquor_shop/gallery',
   },
 };
 

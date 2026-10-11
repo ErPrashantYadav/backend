@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../errors/app-error';
 import { prisma } from '../../lib/prisma';
-import type { PageResult } from '../catalog/catalog.types';
+import type { PageResult } from '../../types/pagination';
 import type {
   AdjustStockInput,
   InventoryMovementRecord,

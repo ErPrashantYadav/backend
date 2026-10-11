@@ -10,8 +10,19 @@ import type {
 import type { NotificationOutboxService } from '../notifications/notification-outbox.service';
 import type { PromoCodeRepository } from '../promo-code/promo-code.types';
 
+export interface MemoryCustomerRecord {
+  id: string;
+  name: string;
+  phone: string;
+  deliveryAddress: string;
+  email: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class MemoryCheckoutRepository implements CheckoutRepository {
   orders: OrderSnapshot[] = [];
+  customers: MemoryCustomerRecord[] = [];
 
   constructor(
     public variants: MemoryVariantItem[] = [],
@@ -130,10 +141,22 @@ export class MemoryCheckoutRepository implements CheckoutRepository {
     }
 
     const orderId = crypto.randomUUID();
+    const customerId = crypto.randomUUID();
+    const customerRecord: MemoryCustomerRecord = {
+      id: customerId,
+      name: params.customer.name,
+      phone: params.customer.phone,
+      deliveryAddress: params.customer.deliveryAddress,
+      email: params.customer.email || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.customers.push(customerRecord);
+
     const order: OrderSnapshot = {
       id: orderId,
       orderNumber: params.orderNumber,
-      customerId: crypto.randomUUID(),
+      customerId,
       customerName: params.customer.name,
       customerPhone: params.customer.phone,
       customerEmail: params.customer.email || null,

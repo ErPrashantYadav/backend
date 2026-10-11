@@ -13,9 +13,8 @@ import type {
   ProductRecord,
   ProductVariantRecord,
   ProductVariantWriteInput,
-  ProductWriteInput,
-} from '../src/modules/catalog/catalog.types';
-import { calculateDiscountedPrice } from '../src/modules/catalog/catalog.service';
+} from './test-catalog';
+import { calculateDiscountedPrice } from '../src/utils/discount';
 import { testConfig } from './helpers';
 
 class MemoryPublicCatalogRepository implements CatalogRepository {

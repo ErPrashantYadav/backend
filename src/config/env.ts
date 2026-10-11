@@ -102,6 +102,16 @@ const environmentSchema = z
       .trim()
       .min(1)
       .default('liquor_shop/payment_qr'),
+    CLOUDINARY_BANNER_FOLDER: z
+      .string()
+      .trim()
+      .min(1)
+      .default('liquor_shop/banners'),
+    CLOUDINARY_GALLERY_FOLDER: z
+      .string()
+      .trim()
+      .min(1)
+      .default('liquor_shop/gallery'),
     GOOGLE_MAPS_API_KEY: z.string().trim().min(1).optional(),
     STORE_ORIGIN_LATITUDE: z.coerce.number().min(-90).max(90).default(27.7172),
     STORE_ORIGIN_LONGITUDE: z.coerce

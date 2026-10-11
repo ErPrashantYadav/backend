@@ -10,8 +10,7 @@ import type {
   PageResult,
   ProductImageRecord,
   ProductRecord,
-  ProductVariantRecord,
-} from '../src/modules/catalog/catalog.types';
+} from './test-catalog';
 import { MemoryCheckoutRepository } from '../src/modules/checkout/memory-checkout.repository';
 import { ConfigurableDeliveryFeePolicy } from '../src/modules/delivery/delivery-fee.policy';
 import { RoutingDeliveryFeeEstimator } from '../src/modules/delivery/routing-delivery-fee.estimator';

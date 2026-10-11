@@ -14,10 +14,24 @@ import { createAdminManagementRouter } from './modules/admin-management/admin-ma
 import { PrismaAdminAuthRepository } from './modules/auth/auth.repository';
 import { PrismaAdminManagementRepository } from './modules/admin-management/admin-management.repository';
 import type { AdminManagementRepository } from './modules/admin-management/admin-management.types';
-import { createCatalogRouter } from './modules/catalog/catalog.routes';
-import { createPublicCatalogRouter } from './modules/catalog/public-catalog.routes';
-import { PrismaCatalogRepository } from './modules/catalog/catalog.repository';
-import type { CatalogRepository } from './modules/catalog/catalog.types';
+import {
+  createAdminCategoryRouter,
+  createPublicCategoryRouter,
+} from './modules/categories/categories.routes';
+import { PrismaCategoryRepository } from './modules/categories/categories.repository';
+import type { CategoryRepository } from './modules/categories/categories.types';
+import {
+  createAdminBrandRouter,
+  createPublicBrandRouter,
+} from './modules/brands/brands.routes';
+import { PrismaBrandRepository } from './modules/brands/brands.repository';
+import type { BrandRepository } from './modules/brands/brands.types';
+import {
+  createAdminProductRouter,
+  createPublicProductRouter,
+} from './modules/products/products.routes';
+import { PrismaProductRepository } from './modules/products/products.repository';
+import type { ProductRepository } from './modules/products/products.types';
 import { createInventoryRouter } from './modules/inventory/inventory.routes';
 import { PrismaInventoryRepository } from './modules/inventory/inventory.repository';
 import { MemoryInventoryRepository } from './modules/inventory/memory-inventory.repository';
@@ -100,17 +114,73 @@ import { MemoryDashboardRepository } from './modules/dashboard/memory-dashboard.
 import { DashboardService } from './modules/dashboard/dashboard.service';
 import type { DashboardRepository } from './modules/dashboard/dashboard.types';
 import { createAdminDashboardRouter } from './modules/dashboard/dashboard.routes';
+import { PrismaCustomerRepository } from './modules/customers/customers.repository';
+import { MemoryCustomerRepository } from './modules/customers/memory-customers.repository';
+import { CustomerService } from './modules/customers/customers.service';
+import type { CustomerRepository } from './modules/customers/customers.types';
+import { createAdminCustomerRouter } from './modules/customers/customers.routes';
+import { PrismaContactInquiryRepository } from './modules/contact-inquiry/contact-inquiry.repository';
+import { MemoryContactInquiryRepository } from './modules/contact-inquiry/memory-contact-inquiry.repository';
+import { ContactInquiryService } from './modules/contact-inquiry/contact-inquiry.service';
+import type { ContactInquiryRepository } from './modules/contact-inquiry/contact-inquiry.types';
+import {
+  createAdminContactInquiryRouter,
+  createPublicContactInquiryRouter,
+} from './modules/contact-inquiry/contact-inquiry.routes';
+import { PrismaBannerRepository } from './modules/banners/banners.repository';
+import { MemoryBannerRepository } from './modules/banners/memory-banners.repository';
+import { BannerService } from './modules/banners/banners.service';
+import type { BannerRepository } from './modules/banners/banners.types';
+import {
+  createAdminBannerRouter,
+  createPublicBannerRouter,
+} from './modules/banners/banners.routes';
+import { PrismaGalleryRepository } from './modules/gallery/gallery.repository';
+import { MemoryGalleryRepository } from './modules/gallery/memory-gallery.repository';
+import { GalleryService } from './modules/gallery/gallery.service';
+import type { GalleryRepository } from './modules/gallery/gallery.types';
+import {
+  createAdminGalleryRouter,
+  createPublicGalleryRouter,
+} from './modules/gallery/gallery.routes';
+import { PrismaStoreSettingsRepository } from './modules/store-settings/store-settings.repository';
+import { MemoryStoreSettingsRepository } from './modules/store-settings/memory-store-settings.repository';
+import { StoreSettingsService } from './modules/store-settings/store-settings.service';
+import type { StoreSettingsRepository } from './modules/store-settings/store-settings.types';
+import {
+  createAdminStoreSettingsRouter,
+  createPublicStoreSettingsRouter,
+} from './modules/store-settings/store-settings.routes';
+import { PrismaSocialMediaRepository } from './modules/social-media/social-media.repository';
+import { MemorySocialMediaRepository } from './modules/social-media/memory-social-media.repository';
+import { SocialMediaService } from './modules/social-media/social-media.service';
+import type { SocialMediaRepository } from './modules/social-media/social-media.types';
+import {
+  createAdminSocialMediaRouter,
+  createPublicSocialMediaRouter,
+  createPublicSocialMediaLinkRouter,
+} from './modules/social-media/social-media.routes';
 import { createErrorHandler } from './middleware/error-handler';
+
 import { notFoundHandler } from './middleware/not-found';
 import { createRequestLogger } from './middleware/request-logger';
 import { successResponse } from './utils/response';
 
 export type DatabaseReadinessCheck = () => Promise<void>;
 
+export interface LegacyCatalogRepository
+  extends
+    Partial<CategoryRepository>,
+    Partial<BrandRepository>,
+    Partial<ProductRepository> {}
+
 export interface AppDependencies {
   adminAuthRepository?: AdminAuthRepository;
   adminManagementRepository?: AdminManagementRepository;
-  catalogRepository?: CatalogRepository;
+  categoryRepository?: CategoryRepository;
+  brandRepository?: BrandRepository;
+  productRepository?: ProductRepository;
+  catalogRepository?: LegacyCatalogRepository;
   inventoryRepository?: InventoryRepository;
   cartRepository?: CartRepository;
   checkoutRepository?: CheckoutRepository;
@@ -122,7 +192,20 @@ export interface AppDependencies {
   promoCodeService?: PromoCodeService;
   dashboardRepository?: DashboardRepository;
   dashboardService?: DashboardService;
+  customerRepository?: CustomerRepository;
+  customerService?: CustomerService;
+  contactInquiryRepository?: ContactInquiryRepository;
+  contactInquiryService?: ContactInquiryService;
+  bannerRepository?: BannerRepository;
+  bannerService?: BannerService;
+  galleryRepository?: GalleryRepository;
+  galleryService?: GalleryService;
+  storeSettingsRepository?: StoreSettingsRepository;
+  storeSettingsService?: StoreSettingsService;
+  socialMediaRepository?: SocialMediaRepository;
+  socialMediaService?: SocialMediaService;
   cloudinaryClient?: CloudinaryClient;
+
   cloudinaryService?: CloudinaryService;
   routingProvider?: RoutingProvider;
   routingService?: RoutingService;
@@ -230,28 +313,66 @@ export function createApp(
         new PrismaAdminManagementRepository(),
     ),
   );
+  const isMemoryMode =
+    Boolean(
+      dependencies.checkoutRepository &&
+      'orders' in dependencies.checkoutRepository,
+    ) || config.NODE_ENV === 'test';
+
+  const auditRepository =
+    dependencies.auditRepository ??
+    (isMemoryMode
+      ? new MemoryAuditLogRepository()
+      : new PrismaAuditLogRepository());
+  const auditService = new AuditService(auditRepository, logger);
+
+  const categoryRepository =
+    dependencies.categoryRepository ??
+    (dependencies.catalogRepository as CategoryRepository | undefined) ??
+    new PrismaCategoryRepository();
+
+  const brandRepository =
+    dependencies.brandRepository ??
+    (dependencies.catalogRepository as BrandRepository | undefined) ??
+    new PrismaBrandRepository();
+
+  const productRepository =
+    dependencies.productRepository ??
+    (dependencies.catalogRepository as ProductRepository | undefined) ??
+    new PrismaProductRepository();
+
   const inventoryRepository =
     dependencies.inventoryRepository ??
-    (dependencies.catalogRepository &&
-    'variants' in dependencies.catalogRepository
+    (productRepository && 'variants' in productRepository
       ? new MemoryInventoryRepository(
-          (dependencies.catalogRepository as unknown as { variants: [] })
-            .variants,
+          (productRepository as unknown as { variants: [] }).variants,
         )
       : new PrismaInventoryRepository());
   const inventoryService = new InventoryService(inventoryRepository);
 
-  const catalogRepository =
-    dependencies.catalogRepository ?? new PrismaCatalogRepository();
+  app.use(
+    '/api/catalog/categories',
+    createPublicCategoryRouter(categoryRepository),
+  );
+  app.use('/api/catalog/brands', createPublicBrandRouter(brandRepository));
+  app.use(
+    '/api/catalog/products',
+    createPublicProductRouter(productRepository, inventoryService),
+  );
 
   app.use(
-    '/api/catalog',
-    createPublicCatalogRouter(catalogRepository, inventoryService),
+    '/api/admin/categories',
+    createAdminCategoryRouter(authService, categoryRepository),
   );
   app.use(
-    '/api/admin',
-    createCatalogRouter(authService, catalogRepository, inventoryService),
+    '/api/admin/brands',
+    createAdminBrandRouter(authService, brandRepository, auditService),
   );
+  app.use(
+    '/api/admin/products',
+    createAdminProductRouter(authService, productRepository, inventoryService),
+  );
+
   app.use(
     '/api/admin/inventory',
     createInventoryRouter(authService, inventoryRepository),
@@ -268,19 +389,6 @@ export function createApp(
     '/api/payment-methods',
     createPublicPaymentMethodRouter(paymentMethodRepository),
   );
-
-  const isMemoryMode =
-    Boolean(
-      dependencies.checkoutRepository &&
-      'orders' in dependencies.checkoutRepository,
-    ) || config.NODE_ENV === 'test';
-
-  const auditRepository =
-    dependencies.auditRepository ??
-    (isMemoryMode
-      ? new MemoryAuditLogRepository()
-      : new PrismaAuditLogRepository());
-  const auditService = new AuditService(auditRepository, logger);
 
   const promoCodeRepository =
     dependencies.promoCodeRepository ??
@@ -393,7 +501,7 @@ export function createApp(
 
   const checkoutService = new CheckoutService(
     checkoutRepository,
-    catalogRepository,
+    productRepository,
     cartRepository,
     deliveryFeeEstimator,
     undefined,
@@ -402,12 +510,12 @@ export function createApp(
     promoCodeService,
   );
 
-  app.use('/api/cart', createCartRouter(cartRepository, catalogRepository));
+  app.use('/api/cart', createCartRouter(cartRepository, productRepository));
   app.use(
     '/api/checkout',
     createCheckoutRouter(
       checkoutRepository,
-      catalogRepository,
+      productRepository,
       cartRepository,
       paymentMethodRepository,
       deliveryFeeEstimator,
@@ -563,6 +671,115 @@ export function createApp(
     ),
   );
 
+  const customerRepository =
+    dependencies.customerRepository ??
+    (isMemoryMode
+      ? new MemoryCustomerRepository(checkoutRepository)
+      : new PrismaCustomerRepository());
+  const customerService =
+    dependencies.customerService ?? new CustomerService(customerRepository);
+
+  app.use(
+    '/api/admin/customers',
+    createAdminCustomerRouter(authService, customerService),
+  );
+
+  const contactInquiryRepository =
+    dependencies.contactInquiryRepository ??
+    (isMemoryMode
+      ? new MemoryContactInquiryRepository()
+      : new PrismaContactInquiryRepository());
+  const contactInquiryService =
+    dependencies.contactInquiryService ??
+    new ContactInquiryService(contactInquiryRepository, auditService);
+
+  app.use(
+    '/api/contact',
+    createPublicContactInquiryRouter(contactInquiryService),
+  );
+  app.use(
+    '/api/contact-inquiries',
+    createPublicContactInquiryRouter(contactInquiryService),
+  );
+  app.use(
+    '/api/admin/contact-inquiries',
+    createAdminContactInquiryRouter(authService, contactInquiryService),
+  );
+  app.use(
+    '/api/admin/contact',
+    createAdminContactInquiryRouter(authService, contactInquiryService),
+  );
+
+  const bannerRepository =
+    dependencies.bannerRepository ??
+    (isMemoryMode
+      ? new MemoryBannerRepository()
+      : new PrismaBannerRepository());
+  const bannerService =
+    dependencies.bannerService ??
+    new BannerService(bannerRepository, auditService);
+
+  app.use('/api/banners', createPublicBannerRouter(bannerService));
+  app.use(
+    '/api/admin/banners',
+    createAdminBannerRouter(authService, bannerService),
+  );
+
+  const galleryRepository =
+    dependencies.galleryRepository ??
+    (isMemoryMode
+      ? new MemoryGalleryRepository()
+      : new PrismaGalleryRepository());
+  const galleryService =
+    dependencies.galleryService ??
+    new GalleryService(galleryRepository, auditService);
+
+  app.use('/api/gallery', createPublicGalleryRouter(galleryService));
+  app.use(
+    '/api/admin/gallery',
+    createAdminGalleryRouter(authService, galleryService),
+  );
+
+  const storeSettingsRepository =
+    dependencies.storeSettingsRepository ??
+    (isMemoryMode
+      ? new MemoryStoreSettingsRepository()
+      : new PrismaStoreSettingsRepository());
+  const storeSettingsService =
+    dependencies.storeSettingsService ??
+    new StoreSettingsService(storeSettingsRepository, auditService);
+
+  app.use(
+    '/api/settings',
+    createPublicStoreSettingsRouter(storeSettingsService),
+  );
+  app.use(
+    '/api/admin/settings',
+    createAdminStoreSettingsRouter(authService, storeSettingsService),
+  );
+
+  const socialMediaRepository =
+    dependencies.socialMediaRepository ??
+    (isMemoryMode
+      ? new MemorySocialMediaRepository()
+      : new PrismaSocialMediaRepository());
+  const socialMediaService =
+    dependencies.socialMediaService ??
+    new SocialMediaService(socialMediaRepository, auditService);
+
+  app.use(
+    '/api/social-media',
+    createPublicSocialMediaRouter(socialMediaService),
+  );
+  app.use(
+    '/api/social-media-link',
+    createPublicSocialMediaLinkRouter(socialMediaService),
+  );
+  app.use(
+    '/api/admin/social-media',
+    createAdminSocialMediaRouter(authService, socialMediaService),
+  );
+
   const cloudinaryClient =
     dependencies.cloudinaryClient ??
     (config.CLOUDINARY_CLOUD_NAME &&
@@ -582,6 +799,10 @@ export function createApp(
         paymentMethodRepository,
         paymentSubmissionRepository,
         checkoutRepository,
+        [],
+        bannerRepository,
+        galleryRepository,
+        socialMediaRepository,
       )
     : new PrismaMediaReferenceChecker();
 

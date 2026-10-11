@@ -20,6 +20,8 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     JWT_ACCESS_TOKEN_TTL_SECONDS: 900,
     CLOUDINARY_PRODUCT_FOLDER: 'liquor_shop/products',
     CLOUDINARY_PAYMENT_QR_FOLDER: 'liquor_shop/payment_qr',
+    CLOUDINARY_BANNER_FOLDER: 'liquor_shop/banners',
+    CLOUDINARY_GALLERY_FOLDER: 'liquor_shop/gallery',
     STORE_ORIGIN_LATITUDE: 27.7172,
     STORE_ORIGIN_LONGITUDE: 85.324,
     DELIVERY_FEE_MODE: 'PER_KM',

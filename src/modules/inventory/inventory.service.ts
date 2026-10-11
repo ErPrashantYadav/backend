@@ -1,5 +1,5 @@
 import { AppError } from '../../errors/app-error';
-import type { PageResult } from '../catalog/catalog.types';
+import type { PageResult } from '../../types/pagination';
 import {
   INVENTORY_MOVEMENT_TYPES,
   type AdjustStockInput,

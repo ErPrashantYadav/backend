@@ -16,7 +16,7 @@ import type {
   ProductWriteInput,
   ProductImageWriteInput,
   ProductVariantWriteInput,
-} from '../src/modules/catalog/catalog.types';
+} from './test-catalog';
 
 function page<T>(
   items: T[],
@@ -53,15 +53,20 @@ class MemoryCatalogRepository implements CatalogRepository {
     search?: string;
     isActive?: boolean;
   }) {
-    const filtered = this.categories.filter(
-      (category) =>
-        (input.isActive === undefined ||
-          category.isActive === input.isActive) &&
-        (!input.search ||
-          `${category.name} ${category.slug}`
-            .toLowerCase()
-            .includes(input.search.toLowerCase())),
-    );
+    const filtered = this.categories
+      .filter(
+        (category) =>
+          (input.isActive === undefined ||
+            category.isActive === input.isActive) &&
+          (!input.search ||
+            `${category.name} ${category.slug}`
+              .toLowerCase()
+              .includes(input.search.toLowerCase())),
+      )
+      .sort(
+        (a, b) =>
+          a.displayOrder - b.displayOrder || a.name.localeCompare(b.name),
+      );
     return page(filtered, input);
   }
 
@@ -80,7 +85,13 @@ class MemoryCatalogRepository implements CatalogRepository {
       );
     }
     const now = new Date();
-    const row = { ...input, id: this.id(), createdAt: now, updatedAt: now };
+    const row = {
+      ...input,
+      displayOrder: input.displayOrder ?? 0,
+      id: this.id(),
+      createdAt: now,
+      updatedAt: now,
+    };
     this.categories.push(row);
     return row;
   }
@@ -126,14 +137,19 @@ class MemoryCatalogRepository implements CatalogRepository {
     search?: string;
     isActive?: boolean;
   }) {
-    const filtered = this.brands.filter(
-      (brand) =>
-        (input.isActive === undefined || brand.isActive === input.isActive) &&
-        (!input.search ||
-          `${brand.name} ${brand.slug}`
-            .toLowerCase()
-            .includes(input.search.toLowerCase())),
-    );
+    const filtered = this.brands
+      .filter(
+        (brand) =>
+          (input.isActive === undefined || brand.isActive === input.isActive) &&
+          (!input.search ||
+            `${brand.name} ${brand.slug}`
+              .toLowerCase()
+              .includes(input.search.toLowerCase())),
+      )
+      .sort(
+        (a, b) =>
+          a.displayOrder - b.displayOrder || a.name.localeCompare(b.name),
+      );
     return page(filtered, input);
   }
 
@@ -152,9 +168,27 @@ class MemoryCatalogRepository implements CatalogRepository {
       );
     }
     const now = new Date();
-    const row = { ...input, id: this.id(), createdAt: now, updatedAt: now };
+    const row = {
+      ...input,
+      displayOrder: input.displayOrder ?? 0,
+      id: this.id(),
+      createdAt: now,
+      updatedAt: now,
+    };
     this.brands.push(row);
     return row;
+  }
+
+  async reorderBrands(
+    items: Array<{ id: string; displayOrder: number }>,
+  ): Promise<void> {
+    for (const item of items) {
+      const b = this.brands.find((brand) => brand.id === item.id);
+      if (b) {
+        b.displayOrder = item.displayOrder;
+        b.updatedAt = new Date();
+      }
+    }
   }
 
   async updateBrand(
@@ -824,5 +858,100 @@ describe('catalog management APIs', () => {
       .send({ name: '', slug: '---', isActive: true });
     expect(invalidCategory.status).toBe(400);
     expect(invalidCategory.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('does not expose a reorder endpoint for categories (returns 404)', async () => {
+    const repository = new MemoryCatalogRepository();
+    const { app, token } = catalogApp(repository);
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const reorderRes = await request(app)
+      .put('/api/admin/categories/reorder')
+      .set(headers)
+      .send({
+        items: [
+          { id: '10000000-0000-4000-8000-000000000101', displayOrder: 0 },
+        ],
+      });
+    expect(reorderRes.status).toBe(404);
+  });
+
+  it('reorders brands, enforces validation, RBAC, and reflects in public listing', async () => {
+    const repository = new MemoryCatalogRepository();
+    const brand1 = await repository.createBrand({
+      name: 'Alpha Brand',
+      slug: 'alpha-brand',
+      description: null,
+      isActive: true,
+      displayOrder: 0,
+    });
+    const brand2 = await repository.createBrand({
+      name: 'Beta Brand',
+      slug: 'beta-brand',
+      description: null,
+      isActive: true,
+      displayOrder: 1,
+    });
+
+    const { app, token } = catalogApp(repository);
+    const headers = { Authorization: `Bearer ${token}` };
+
+    // Reorder: Beta first, Alpha second
+    const reorderRes = await request(app)
+      .put('/api/admin/brands/reorder')
+      .set(headers)
+      .send({
+        items: [
+          { id: brand2.id, displayOrder: 0 },
+          { id: brand1.id, displayOrder: 1 },
+        ],
+      });
+    expect(reorderRes.status).toBe(200);
+    expect(reorderRes.body.success).toBe(true);
+
+    // Verify public listing order
+    const publicRes = await request(app).get('/api/catalog/brands');
+    expect(publicRes.status).toBe(200);
+    const items = publicRes.body.data.items;
+    expect(items[0].id).toBe(brand2.id);
+    expect(items[1].id).toBe(brand1.id);
+
+    // Reject duplicate IDs
+    const duplicateRes = await request(app)
+      .put('/api/admin/brands/reorder')
+      .set(headers)
+      .send({
+        items: [
+          { id: brand1.id, displayOrder: 0 },
+          { id: brand1.id, displayOrder: 1 },
+        ],
+      });
+    expect(duplicateRes.status).toBe(400);
+    expect(duplicateRes.body.error.code).toBe('VALIDATION_ERROR');
+
+    // Reject non-existent ID
+    const notFoundRes = await request(app)
+      .put('/api/admin/brands/reorder')
+      .set(headers)
+      .send({
+        items: [
+          { id: '99999999-0000-4000-8000-000000000099', displayOrder: 0 },
+        ],
+      });
+    expect(notFoundRes.status).toBe(404);
+    expect(notFoundRes.body.error.code).toBe('NOT_FOUND');
+
+    // Enforce RBAC permission
+    const { app: unauthorizedApp, token: unauthorizedToken } = catalogApp(
+      repository,
+      ['catalog.brands.read'],
+    );
+    const forbiddenRes = await request(unauthorizedApp)
+      .put('/api/admin/brands/reorder')
+      .set('Authorization', `Bearer ${unauthorizedToken}`)
+      .send({
+        items: [{ id: brand1.id, displayOrder: 0 }],
+      });
+    expect(forbiddenRes.status).toBe(403);
   });
 });

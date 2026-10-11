@@ -1,13 +1,13 @@
 import { Prisma } from '@prisma/client';
 import { AppError } from '../../errors/app-error';
-import { calculateDiscountedPrice } from '../catalog/catalog.service';
-import type { CatalogRepository } from '../catalog/catalog.types';
+import { calculateDiscountedPrice } from '../../utils/discount';
+import type { ProductRepository } from '../products/products.types';
 import type { CartDetail, CartItemDetail, CartRepository } from './cart.types';
 
 export class CartService {
   constructor(
     private readonly cartRepository: CartRepository,
-    private readonly catalogRepository: CatalogRepository,
+    private readonly productRepository: ProductRepository,
   ) {}
 
   async getOrCreateCart(
@@ -49,7 +49,7 @@ export class CartService {
 
       // Scan products in repository (or findProduct)
       // Since catalogRepository.listProducts can list products, let's find the product
-      const productList = await this.catalogRepository.listProducts({
+      const productList = await this.productRepository.listProducts({
         page: 1,
         pageSize: 100,
       });
@@ -196,7 +196,7 @@ export class CartService {
     }
 
     // Verify product and variant
-    const productList = await this.catalogRepository.listProducts({
+    const productList = await this.productRepository.listProducts({
       page: 1,
       pageSize: 100,
     });
@@ -271,7 +271,7 @@ export class CartService {
     }
 
     if (quantity > 0) {
-      const productList = await this.catalogRepository.listProducts({
+      const productList = await this.productRepository.listProducts({
         page: 1,
         pageSize: 100,
       });

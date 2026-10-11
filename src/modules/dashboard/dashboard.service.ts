@@ -160,4 +160,3 @@ export class DashboardService {
     return this.repository.getLowStockSummary(Math.min(limit, 100));
   }
 }
-

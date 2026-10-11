@@ -35,7 +35,7 @@ Protected management endpoints are mounted at `/api/admin`: `GET/POST /users`, `
 
 ## Catalog Management
 
-Protected catalog routes use `/api/admin/categories`, `/api/admin/brands`, `/api/admin/products`, `/api/admin/products/:id/images`, and `/api/admin/products/:id/variants`. Each resource supports permission-scoped list/detail/create/update/delete operations where applicable; admin lists support pagination, and lists support search/filtering. Category and brand deletes return a conflict while products reference them; delete operations for products and variants deactivate them to preserve future order/inventory references. Product image records store HTTPS image URLs and metadata; image upload integration is not part of these CRUD routes. Variant size input accepts `ml` or `L` and is normalized to a positive integer millilitre key and canonical `<n> ml` label. SKUs are trimmed and uppercased; slugs use NFKC, lowercase, and hyphen-separated Unicode letters/numbers. Discounts exist only on products.
+Protected catalog routes use `/api/admin/categories`, `/api/admin/brands`, `/api/admin/products`, `/api/admin/products/:id/images`, and `/api/admin/products/:id/variants`. Admin reorder routes `PUT /api/admin/categories/reorder` (requires `catalog.categories.update`) and `PUT /api/admin/brands/reorder` (requires `catalog.brands.update`) persist custom display order via `$transaction`. Each resource supports permission-scoped list/detail/create/update/delete operations where applicable; admin lists support pagination, and lists support search/filtering. Category and brand deletes return a conflict while products reference them; delete operations for products and variants deactivate them to preserve future order/inventory references. Product image records store HTTPS image URLs and metadata; image upload integration is not part of these CRUD routes. Variant size input accepts `ml` or `L` and is normalized to a positive integer millilitre key and canonical `<n> ml` label. SKUs are trimmed and uppercased; slugs use NFKC, lowercase, and hyphen-separated Unicode letters/numbers. Discounts exist only on products.
 
 ## Admin Dashboard and Sales Analytics
 
@@ -46,6 +46,25 @@ Protected analytics endpoints are mounted at `/api/admin/dashboard` and require 
 - `GET /api/admin/dashboard/order-status-breakdown` (alias `/orders/status-breakdown`): Distribution of orders across all fulfillment statuses (`PENDING`, `CONFIRMED`, `PREPARING`, `OUT_FOR_DELIVERY`, `DELIVERED`, `CANCELLED`).
 - `GET /api/admin/dashboard/top-products` (alias `/best-sellers`): Top selling products and variants ranked by total quantity sold and revenue generated, bounded with an optional `limit` query param (1–100, default 10). Excludes cancelled orders.
 - `GET /api/admin/dashboard/low-stock` (alias `/inventory`): Lists active catalog variants whose current inventory is at or below their configured `lowStockThreshold`, ordered ascending by stock.
+
+## Admin Customer Management and Guest Order History
+
+Protected customer management endpoints are mounted at `/api/admin/customers` and require the `customers.read` permission (or `admin.system.manage`):
+
+- `GET /api/admin/customers`: Paginated listing of customer accounts created via guest checkouts. Supports search across `name`, `phone`, and `email` (case-insensitive substring match). Supports pagination query parameters (`page`, `limit`) and sorting (`sortBy` in `createdAt`, `name`, `orderCount`, `totalSpent`, `latestOrderAt`, `sortOrder` in `asc`, `desc`). Computes aggregated metrics (`orderCount`, `totalSpent` excluding cancelled orders, `latestOrderAt`) per customer. Preserves distinct customer identities without automatically merging separate records sharing the same phone number.
+- `GET /api/admin/customers/:id`: Retrieves full customer profile, complete summary metrics (`orderCount`, `totalSpent`, `latestOrderAt`, `firstOrderAt`, `completedOrderCount`, `pendingOrderCount`, `cancelledOrderCount`), and the 5 most recent orders. Returns 404 `CUSTOMER_NOT_FOUND` if not found.
+- `GET /api/admin/customers/:id/orders`: Retrieves full paginated order history for the specified customer. Supports query filters by `status` (e.g. `DELIVERED`, `CANCELLED`), `paymentStatus` (e.g. `PAID`, `UNDER_REVIEW`), date range (`startDate`, `endDate` in ISO-8601), and sorting (`sortBy` in `createdAt`, `total`).
+- **Security & Privacy**: All responses strictly exclude sensitive fields, including `orderLookupToken`, `lookupTokenHash`, `idempotencyKey`, and `requestFingerprint`. Customers continue to checkout as guests without requiring passwords or sessions.
+
+## Contact & Customer Inquiries
+
+Public and admin endpoints for managing customer contact messages and inquiries:
+
+- `POST /api/contact` (alias `/api/contact-inquiries`): Public submission endpoint allowing guests to submit an inquiry with `name`, `phone`, optional `email`, `subject`, and `message`. Protected by an IP rate limiter (10 requests per 15 minutes), strict Zod length boundaries, input sanitization, and normalization. Client-supplied internal fields (`status`, `adminNote`, `id`, `resolvedAt`) are strictly ignored.
+- `GET /api/admin/contact-inquiries` (alias `/api/admin/contact`): Paginated listing protected by `contact-inquiries.read`. Supports query parameters for `page`, `limit` (max 100), `search` across name, phone, email, and subject, `status` filter (`NEW`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`), date range filter (`startDate`, `endDate`), and sorting.
+- `GET /api/admin/contact-inquiries/:id`: Retrieves inquiry details including internal `adminNote`, `status`, and `resolvedAt`. Protected by `contact-inquiries.read`.
+- `PATCH /api/admin/contact-inquiries/:id/status` (alias `PUT`): Updates the inquiry status (`NEW`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`) and optional internal `adminNote`. Automatically timestamps `resolvedAt` upon resolution/closure and generates a persistent audit log record. Protected by `contact-inquiries.update`.
+- `DELETE /api/admin/contact-inquiries/:id`: Deletes an inquiry record and logs an audit log event. Protected by `contact-inquiries.update`.
 
 ### One-Time Initial Administrator Provisioning
 
@@ -93,3 +112,124 @@ npm start
 ```
 
 The application validates its environment before listening. A failed PostgreSQL probe makes readiness return HTTP 503; liveness remains available. Rate limiting currently uses the process-local memory store, so configure Dokploy for a single API instance until a shared store is justified.
+
+## Catalog Architecture & Modularization
+
+The catalog is decoupled into three dedicated feature modules adhering to clean domain boundaries:
+
+- **Categories** (`src/modules/categories/`):
+  - Storefront: `GET /api/catalog/categories`
+  - Admin: `GET /api/admin/categories`, `GET /api/admin/categories/:id`, `POST /api/admin/categories`, `PUT|PATCH /api/admin/categories/:id`, `DELETE /api/admin/categories/:id`
+- **Brands** (`src/modules/brands/`):
+  - Storefront: `GET /api/catalog/brands`
+  - Admin: `GET /api/admin/brands`, `GET /api/admin/brands/:id`, `POST /api/admin/brands`, `PUT|PATCH /api/admin/brands/:id`, `DELETE /api/admin/brands/:id`, `PUT /api/admin/brands/reorder`
+- **Products** (`src/modules/products/`):
+  - Storefront: `GET /api/catalog/products`, `GET /api/catalog/products/:idOrSlug`
+  - Admin: `GET /api/admin/products`, `GET /api/admin/products/:id`, `POST /api/admin/products`, `PUT|PATCH /api/admin/products/:id`, `DELETE /api/admin/products/:id`, variant management (`POST /:id/variants`, `PATCH /:id/variants/:variantId`, `DELETE /:id/variants/:variantId`), and image management (`POST /:id/images`, `DELETE /:id/images/:imageId`)
+- **Shared Utilities**:
+  - `src/types/pagination.ts`: Standard `PageResult<T>` pagination contract.
+  - `src/utils/slug.ts`: Unicode NFKC slug normalization (`normalizeCatalogSlug`).
+  - `src/utils/money.ts`: Two-decimal currency rounding and quantization (`normalizeMoney`).
+  - `src/utils/discount.ts`: Product percentage and fixed discount calculation clamped at zero (`calculateDiscountedPrice`, `validateDiscount`).
+
+## Banners and Promotions Management
+
+- **Storefront Endpoint**:
+  - `GET /api/banners`: Public endpoint returning active promotional banners within scheduled dates (`now >= startDate` and `now <= endDate`), ordered by `displayOrder ASC` and `createdAt DESC`.
+- **Admin Endpoints**:
+  - `GET /api/admin/banners`: Paginated banner listing with `isActive`, `search`, and sorting filters (requires `banners.read`).
+  - `GET /api/admin/banners/:id`: Single banner detail (requires `banners.read`).
+  - `POST /api/admin/banners`: Create promotional banner with scheduling dates and Cloudinary image URL (requires `banners.create`).
+  - `PUT /api/admin/banners/reorder`: Persist drag-and-drop display order across banners (requires `banners.update`).
+  - `PUT /api/admin/banners/:id` / `PATCH /api/admin/banners/:id`: Update banner content, links, display order, or dates (requires `banners.update`).
+  - `PATCH /api/admin/banners/:id/status`: Activate or deactivate banner (requires `banners.update`).
+  - `DELETE /api/admin/banners/:id`: Delete banner safely (requires `banners.delete`).
+- **Media Integration**:
+  - Secure Cloudinary upload via `POST /api/admin/media/upload` using `purpose: BANNER_IMAGE` (target folder: `CLOUDINARY_BANNER_FOLDER`, default `liquor_shop/banners`).
+  - Reference protection: prevents deleting Cloudinary assets currently referenced by any banner record.
+- **Audit Integration**:
+  - Automatically records audit events for `banner.create`, `banner.update`, `banner.update_status`, `banner.reorder`, and `banner.delete` with actor admin details.
+
+## Gallery Management
+
+- **Storefront Endpoint**:
+  - `GET /api/gallery`: Public endpoint returning active gallery items ordered by `displayOrder ASC` and `createdAt DESC`, with optional `category` filter.
+- **Admin Endpoints**:
+  - `GET /api/admin/gallery`: Paginated gallery list with `category`, `isActive`, `search`, and sorting filters (requires `gallery.read`).
+  - `GET /api/admin/gallery/:id`: Single gallery item detail (requires `gallery.read`).
+  - `POST /api/admin/gallery`: Create gallery item with Cloudinary image URL, category, title, description, and display order (requires `gallery.create`).
+  - `PUT /api/admin/gallery/:id` / `PATCH /api/admin/gallery/:id`: Update gallery item fields (requires `gallery.update`).
+  - `PATCH /api/admin/gallery/:id/status`: Activate or deactivate gallery item (requires `gallery.update`).
+  - `DELETE /api/admin/gallery/:id`: Delete gallery item safely (requires `gallery.delete`).
+- **Media Integration**:
+  - Secure Cloudinary upload via `POST /api/admin/media/upload` using `purpose: GALLERY_IMAGE` (target folder: `CLOUDINARY_GALLERY_FOLDER`, default `liquor_shop/gallery`).
+  - Asset reference protection: prevents deleting Cloudinary assets currently referenced by any gallery item record.
+- **Audit Integration**:
+  - Automatically records audit events for `gallery.create`, `gallery.update`, `gallery.update_status`, and `gallery.delete` with actor admin details.
+
+## Store Settings and Business Hours
+
+- **Storefront Endpoint**:
+  - `GET /api/settings`: Public endpoint returning safe, public-facing store configuration (store name, tagline, primary & secondary phone, support email, address, city, location map URL, social links, 7-day business hours, and active scheduled announcement). All internal fields, database IDs, and secrets are strictly excluded.
+- **Admin Endpoints**:
+  - `GET /api/admin/settings`: Retrieve complete store configuration including timestamps and internal settings (requires `settings.read`).
+  - `PUT /api/admin/settings` / `PATCH /api/admin/settings`: Update store details, contact numbers, social links, weekly business hours (including open/closed status and overnight hours), announcement text, and scheduling (requires `settings.update`).
+- **Validation & Scheduling Rules**:
+  - Validates 24-hour business hour format (`HH:mm`), closed days, and overnight trading hours.
+  - Validates phone format, support email, social URLs, and IANA timezone identifier (`Asia/Kathmandu`).
+  - Enforces `announcementStartDate <= announcementEndDate`.
+- **Audit Integration**:
+  - Automatically records audit events for `settings.update` with actor admin details and modified field names.
+
+## Social Media Management
+
+- **Storefront Endpoints**:
+  - `GET /api/social-media`: Public endpoint returning active social media entries (video reels, posts, profile links) ordered by `displayOrder ASC` and `createdAt DESC`. Supports filtering by `type` (`video` | `profile`) and `platform` (`FACEBOOK`, `INSTAGRAM`, `YOUTUBE`, `TIKTOK`, `OTHER`).
+  - `GET /api/social-media/active`: Alias endpoint returning all active social entries.
+  - `GET /api/social-media-link` (and `GET /api/social-media/profiles`): Public endpoint returning active profile handles grouped by lowercase platform key (e.g. `{ facebook: [...], instagram: [...] }`).
+  - `GET /api/social-media-link/active`: Public endpoint returning active profile links.
+  - _Storefront Consumer Note_: The storefront can consume these links in the site footer (for social icons/handles) and in the homepage Community / Video Showcase section (for Instagram Reels, YouTube Shorts, and TikTok embeds). Note that this repository contains only the backend API; UI components remain to be wired on the storefront frontend.
+- **Admin Endpoints**:
+  - `GET /api/admin/social-media`: Listing with platform filtering, status toggle filter (`isActive`), type filter (`video` | `profile`), text search across labels and URLs, pagination, and `platformCounts` summary object (`ALL`, `FACEBOOK`, `INSTAGRAM`, `YOUTUBE`, `TIKTOK`, `OTHER`) to directly populate the tab pill badges in the Admin UI (requires `social-media.read`).
+  - `GET /api/admin/social-media/:id`: Retrieve single social media item details (requires `social-media.read`).
+  - `POST /api/admin/social-media`: Create single social entry with platform, URL, type, label, optional thumbnail URL, and display order (requires `social-media.create`).
+  - `POST /api/admin/social-media/batch`: Batch creation of multiple social links (requires `social-media.create`).
+  - `PUT /api/admin/social-media/:id` / `PATCH /api/admin/social-media/:id`: Update social media link fields (requires `social-media.update`).
+  - `PATCH /api/admin/social-media/:id/status`: Toggle active status (requires `social-media.update`).
+  - `DELETE /api/admin/social-media/:id`: Delete social media entry (requires `social-media.delete`).
+- **Media Reference Protection**:
+  - Cloudinary assets used as thumbnails in social media entries cannot be deleted while referenced.
+- **Audit Integration**:
+  - Automatically records audit events for `social_media.create`, `social_media.update`, `social_media.update_status`, and `social_media.delete` with actor admin details.
+
+## Admin Drag-and-Drop Display Ordering
+
+Admin drag-and-drop reordering is strictly restricted to presentation modules where explicit manual ordering is required:
+
+1. **Brands**: `PUT /api/admin/brands/reorder` (requires `catalog.brands.update`)
+2. **Banners**: `PUT /api/admin/banners/reorder` (requires `banners.update`)
+
+> [!NOTE]
+> Categories, Products, Gallery, and Social Media do NOT expose reorder endpoints. Their `displayOrder` fields, migrations, and database indexes remain intact for historical database compatibility and default storefront ordering (`displayOrder ASC`), but no reorder API endpoints are exposed.
+
+### Standard Reorder Request Payload
+
+Active reorder endpoints accept a JSON payload with an array of objects:
+
+```json
+{
+  "items": [
+    { "id": "10000000-0000-4000-8000-000000000001", "displayOrder": 0 },
+    { "id": "10000000-0000-4000-8000-000000000002", "displayOrder": 1 }
+  ]
+}
+```
+
+### Safety and Validation Guarantees
+
+- **Duplicate Prevention**: Reorder payloads containing duplicate IDs are rejected with HTTP 400 (`VALIDATION_ERROR`).
+- **Existence Verification**: Every referenced ID must exist; any non-existent ID fails atomically with HTTP 404 (`NOT_FOUND` / `BANNER_NOT_FOUND`).
+- **Range Boundaries**: Negative `displayOrder` values are rejected with HTTP 400 (`VALIDATION_ERROR`).
+- **Atomic Persistence**: Database updates run inside Prisma interactive transactions (`$transaction`), guaranteeing all-or-nothing execution.
+- **Storefront Parity**: Public storefront listings strictly return items sorted by `displayOrder ASC` before secondary criteria.
+- **Audit Trails**: Every reorder action generates an audit log record linking the actor admin ID, timestamp, and target resource.

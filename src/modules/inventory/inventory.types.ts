@@ -1,4 +1,4 @@
-import type { PageResult } from '../catalog/catalog.types';
+import type { PageResult } from '../../types/pagination';
 
 export const INVENTORY_MOVEMENT_TYPES = [
   'RESTOCK',

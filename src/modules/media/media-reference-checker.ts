@@ -1,4 +1,7 @@
 import { prisma } from '../../lib/prisma';
+import type { BannerRepository } from '../banners/banners.types';
+import type { GalleryRepository } from '../gallery/gallery.types';
+import type { SocialMediaRepository } from '../social-media/social-media.types';
 import type {
   CheckoutRepository,
   OrderSnapshot,
@@ -62,6 +65,48 @@ export class PrismaMediaReferenceChecker implements MediaReferenceChecker {
       };
     }
 
+    // 4. Check Banner table
+    const referencedBanner = await prisma.banner.findFirst({
+      where: {
+        OR: [{ publicId }, ...(secureUrl ? [{ imageUrl: secureUrl }] : [])],
+      },
+      select: { id: true, title: true },
+    });
+    if (referencedBanner) {
+      return {
+        referenced: true,
+        reason: `Asset is referenced by banner ${referencedBanner.id} ("${referencedBanner.title}")`,
+      };
+    }
+
+    // 5. Check GalleryItem table
+    const referencedGalleryItem = await prisma.galleryItem.findFirst({
+      where: {
+        OR: [{ publicId }, ...(secureUrl ? [{ imageUrl: secureUrl }] : [])],
+      },
+      select: { id: true, title: true },
+    });
+    if (referencedGalleryItem) {
+      return {
+        referenced: true,
+        reason: `Asset is referenced by gallery item ${referencedGalleryItem.id} ("${referencedGalleryItem.title}")`,
+      };
+    }
+
+    // 6. Check SocialMedia table
+    const referencedSocialMedia = await prisma.socialMedia.findFirst({
+      where: {
+        OR: [{ publicId }, ...(secureUrl ? [{ thumbnailUrl: secureUrl }] : [])],
+      },
+      select: { id: true, label: true, platform: true },
+    });
+    if (referencedSocialMedia) {
+      return {
+        referenced: true,
+        reason: `Asset is referenced by social media item ${referencedSocialMedia.id} (${referencedSocialMedia.platform})`,
+      };
+    }
+
     return { referenced: false };
   }
 }
@@ -76,6 +121,9 @@ export class MemoryMediaReferenceChecker implements MediaReferenceChecker {
       imageUrl: string;
       productId: string;
     }> = [],
+    private readonly bannerRepository?: BannerRepository,
+    private readonly galleryRepository?: GalleryRepository,
+    private readonly socialMediaRepository?: SocialMediaRepository,
   ) {}
 
   async isAssetReferenced(
@@ -160,6 +208,75 @@ export class MemoryMediaReferenceChecker implements MediaReferenceChecker {
         return {
           referenced: true,
           reason: `Asset is referenced by order ${matchingOrder.orderNumber}`,
+        };
+      }
+    }
+
+    // 5. Check banners
+    if (this.bannerRepository) {
+      const banners =
+        'items' in this.bannerRepository
+          ? (
+              this.bannerRepository as unknown as {
+                items: Array<{
+                  publicId: string | null;
+                  imageUrl: string;
+                  title: string;
+                }>;
+              }
+            ).items
+          : (await this.bannerRepository.list({ limit: 1000 })).items;
+      const matchingBanner = banners.find(
+        (b) =>
+          b.publicId === publicId || (secureUrl && b.imageUrl === secureUrl),
+      );
+      if (matchingBanner) {
+        return {
+          referenced: true,
+          reason: `Asset is referenced by banner ("${matchingBanner.title}")`,
+        };
+      }
+    }
+
+    // 6. Check gallery items
+    if (this.galleryRepository) {
+      const items =
+        'items' in this.galleryRepository
+          ? (
+              this.galleryRepository as unknown as {
+                items: Array<{
+                  publicId: string | null;
+                  imageUrl: string;
+                  title: string;
+                }>;
+              }
+            ).items
+          : (await this.galleryRepository.list({ limit: 1000 })).items;
+      const matchingItem = items.find(
+        (g) =>
+          g.publicId === publicId || (secureUrl && g.imageUrl === secureUrl),
+      );
+      if (matchingItem) {
+        return {
+          referenced: true,
+          reason: `Asset is referenced by gallery item ("${matchingItem.title}")`,
+        };
+      }
+    }
+
+    // 7. Check social media items
+    if (this.socialMediaRepository) {
+      const items = (await this.socialMediaRepository.list({ limit: 1000 }))
+        .items;
+      const matchingSocial = items.find(
+        (s) =>
+          s.publicId === publicId ||
+          (secureUrl && s.thumbnailUrl === secureUrl),
+      );
+      if (matchingSocial) {
+        return {
+          referenced: true,
+          reason: `Asset is referenced by social media item (${matchingSocial.platform})`,
         };
       }
     }

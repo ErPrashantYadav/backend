@@ -1,31 +1,28 @@
-import { Prisma } from '@prisma/client';
 import { AppError } from '../../errors/app-error';
+import { normalizeCatalogSlug } from '../../utils/slug';
+import { normalizeMoney } from '../../utils/money';
+import {
+  calculateDiscountedPrice,
+  validateDiscount,
+} from '../../utils/discount';
+import type { PageResult } from '../../types/pagination';
 import type { InventoryService } from '../inventory/inventory.service';
 import type {
-  BrandRecord,
-  CatalogRepository,
-  CategoryRecord,
-  PageResult,
+  ProductImageRecord,
   ProductRecord,
+  ProductRepository,
   ProductVariantRecord,
   ProductWriteInput,
-  PublicBrand,
-  PublicCategory,
   PublicProduct,
   PublicVariant,
-} from './catalog.types';
+} from './products.types';
 
-const MAX_MONEY = 9_999_999_999.99;
+export {
+  calculateDiscountedPrice,
+  validateDiscount,
+} from '../../utils/discount';
+
 const MAX_INTEGER = 2_147_483_647;
-
-export function normalizeCatalogSlug(input: string): string {
-  return input
-    .normalize('NFKC')
-    .toLowerCase()
-    .trim()
-    .replace(/[^\p{L}\p{N}]+/gu, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 export function normalizeSku(input: string): string {
   const sku = input.trim().toUpperCase();
@@ -53,8 +50,9 @@ export function normalizeSize(input: string): {
   }
   const numericValue = Number(match[1]);
   const unit = match[2];
-  if (!unit)
+  if (!unit) {
     throw new AppError(400, 'VALIDATION_ERROR', 'Size unit is required');
+  }
   const milliliters =
     unit.toLowerCase() === 'l' ? numericValue * 1000 : numericValue;
   if (
@@ -69,48 +67,6 @@ export function normalizeSize(input: string): {
     );
   }
   return { sizeMilliliters: milliliters, sizeLabel: `${milliliters} ml` };
-}
-
-export function normalizeMoney(value: number): string {
-  if (!Number.isFinite(value) || value < 0 || value > MAX_MONEY) {
-    throw new AppError(
-      400,
-      'VALIDATION_ERROR',
-      'Money amount is outside the supported range',
-    );
-  }
-  const cents = Math.round(value * 100);
-  if (Math.abs(value * 100 - cents) > 1e-7) {
-    throw new AppError(
-      400,
-      'VALIDATION_ERROR',
-      'Money amounts may have at most two decimal places',
-    );
-  }
-  return new Prisma.Decimal(cents).dividedBy(100).toFixed(2);
-}
-
-function validateDiscount(
-  discountType: ProductWriteInput['discountType'],
-  discountValue: string | null,
-): void {
-  if ((discountType === null) !== (discountValue === null)) {
-    throw new AppError(
-      400,
-      'VALIDATION_ERROR',
-      'Discount type and value must both be set or both be null',
-    );
-  }
-  if (
-    discountType === 'PERCENTAGE' &&
-    new Prisma.Decimal(discountValue!).greaterThan(100)
-  ) {
-    throw new AppError(
-      400,
-      'VALIDATION_ERROR',
-      'Percentage discount cannot exceed 100',
-    );
-  }
 }
 
 function normalizeProductInput(input: ProductWriteInput): ProductWriteInput {
@@ -133,30 +89,6 @@ function normalizeProductInput(input: ProductWriteInput): ProductWriteInput {
         ? null
         : normalizeMoney(Number(input.discountValue)),
   };
-}
-
-export function calculateDiscountedPrice(
-  sellingPrice: string,
-  discountType: 'PERCENTAGE' | 'FIXED' | null,
-  discountValue: string | null,
-): string {
-  if (!discountType || !discountValue) {
-    return sellingPrice;
-  }
-  const price = new Prisma.Decimal(sellingPrice);
-  let effective: Prisma.Decimal;
-  if (discountType === 'PERCENTAGE') {
-    const percentage = new Prisma.Decimal(discountValue);
-    const discountAmount = price.times(percentage).dividedBy(100);
-    effective = price.minus(discountAmount);
-  } else {
-    const fixedAmount = new Prisma.Decimal(discountValue);
-    effective = price.minus(fixedAmount);
-  }
-  if (effective.lessThan(0)) {
-    effective = new Prisma.Decimal(0);
-  }
-  return effective.toFixed(2);
 }
 
 export function toPublicVariant(
@@ -209,79 +141,32 @@ export function toPublicProduct(product: ProductRecord): PublicProduct {
             value: product.discountValue,
           }
         : null,
-    images: [...product.images]
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))
-      .map((img) => ({
-        id: img.id,
-        imageUrl: img.imageUrl,
-        altText: img.altText,
-        sortOrder: img.sortOrder,
-      })),
+    images: product.images.map((image) => ({
+      id: image.id,
+      imageUrl: image.imageUrl,
+      altText: image.altText,
+      sortOrder: image.sortOrder,
+    })),
     variants: activeVariants,
   };
 }
 
-export function toPublicCategory(category: CategoryRecord): PublicCategory {
-  return {
-    id: category.id,
-    name: category.name,
-    slug: category.slug,
-    description: category.description,
-    imageUrl: category.imageUrl,
-  };
-}
-
-export function toPublicBrand(brand: BrandRecord): PublicBrand {
-  return {
-    id: brand.id,
-    name: brand.name,
-    slug: brand.slug,
-    logoUrl: brand.logoUrl,
-  };
-}
-
-export class CatalogService {
+export class ProductService {
   constructor(
-    private readonly repository: CatalogRepository,
+    private readonly repository: ProductRepository,
     private readonly inventoryService?: InventoryService,
   ) {}
 
-  async listPublicCategories(input: {
-    page?: number;
-    pageSize?: number;
-    search?: string;
-  }): Promise<PageResult<PublicCategory>> {
-    const page = Math.max(1, input.page || 1);
-    const pageSize = Math.min(100, Math.max(1, input.pageSize || 20));
-    const result = await this.repository.listCategories({
-      page,
-      pageSize,
-      search: input.search,
-      isActive: true,
-    });
-    return {
-      items: result.items.map(toPublicCategory),
-      pagination: result.pagination,
-    };
+  listProducts(input: Parameters<ProductRepository['listProducts']>[0]) {
+    return this.repository.listProducts(input);
   }
 
-  async listPublicBrands(input: {
-    page?: number;
-    pageSize?: number;
-    search?: string;
-  }): Promise<PageResult<PublicBrand>> {
-    const page = Math.max(1, input.page || 1);
-    const pageSize = Math.min(100, Math.max(1, input.pageSize || 20));
-    const result = await this.repository.listBrands({
-      page,
-      pageSize,
-      search: input.search,
-      isActive: true,
-    });
-    return {
-      items: result.items.map(toPublicBrand),
-      pagination: result.pagination,
-    };
+  async getProduct(id: string): Promise<ProductRecord> {
+    const product = await this.repository.findProduct(id);
+    if (!product) {
+      throw new AppError(404, 'NOT_FOUND', 'Product was not found');
+    }
+    return product;
   }
 
   async listPublicProducts(input: {
@@ -356,142 +241,6 @@ export class CatalogService {
     return toPublicProduct(product);
   }
 
-  listCategories(input: Parameters<CatalogRepository['listCategories']>[0]) {
-    return this.repository.listCategories(input);
-  }
-
-  getCategory(id: string) {
-    return this.repository.findCategory(id).then((category) => {
-      if (!category)
-        throw new AppError(404, 'NOT_FOUND', 'Category was not found');
-      return category;
-    });
-  }
-
-  createCategory(input: {
-    name: string;
-    slug: string;
-    description?: string | null;
-    imageUrl?: string | null;
-    isActive: boolean;
-  }) {
-    const slug = normalizeCatalogSlug(input.slug);
-    if (!slug || slug.length > 160)
-      throw new AppError(
-        400,
-        'VALIDATION_ERROR',
-        'Slug is empty or too long after normalization',
-      );
-    return this.repository.createCategory({
-      name: input.name.trim(),
-      slug,
-      description: input.description?.trim() || null,
-      imageUrl: input.imageUrl ?? null,
-      isActive: input.isActive,
-    });
-  }
-
-  updateCategory(
-    id: string,
-    input: Partial<{
-      name: string;
-      slug: string;
-      description: string | null;
-      imageUrl: string | null;
-      isActive: boolean;
-    }>,
-  ) {
-    const normalized = { ...input };
-    if (input.name !== undefined) normalized.name = input.name.trim();
-    if (input.slug !== undefined) {
-      normalized.slug = normalizeCatalogSlug(input.slug);
-      if (!normalized.slug || normalized.slug.length > 160)
-        throw new AppError(
-          400,
-          'VALIDATION_ERROR',
-          'Slug is empty or too long after normalization',
-        );
-    }
-    if (input.description !== undefined)
-      normalized.description = input.description?.trim() || null;
-    return this.repository.updateCategory(id, normalized);
-  }
-
-  deleteCategory(id: string) {
-    return this.repository.deleteCategory(id);
-  }
-
-  listBrands(input: Parameters<CatalogRepository['listBrands']>[0]) {
-    return this.repository.listBrands(input);
-  }
-
-  getBrand(id: string) {
-    return this.repository.findBrand(id).then((brand) => {
-      if (!brand) throw new AppError(404, 'NOT_FOUND', 'Brand was not found');
-      return brand;
-    });
-  }
-
-  createBrand(input: {
-    name: string;
-    slug: string;
-    logoUrl?: string | null;
-    isActive: boolean;
-  }) {
-    const slug = normalizeCatalogSlug(input.slug);
-    if (!slug || slug.length > 160)
-      throw new AppError(
-        400,
-        'VALIDATION_ERROR',
-        'Slug is empty or too long after normalization',
-      );
-    return this.repository.createBrand({
-      name: input.name.trim(),
-      slug,
-      logoUrl: input.logoUrl ?? null,
-      isActive: input.isActive,
-    });
-  }
-
-  updateBrand(
-    id: string,
-    input: Partial<{
-      name: string;
-      slug: string;
-      logoUrl: string | null;
-      isActive: boolean;
-    }>,
-  ) {
-    const normalized = { ...input };
-    if (input.name !== undefined) normalized.name = input.name.trim();
-    if (input.slug !== undefined) {
-      normalized.slug = normalizeCatalogSlug(input.slug);
-      if (!normalized.slug || normalized.slug.length > 160)
-        throw new AppError(
-          400,
-          'VALIDATION_ERROR',
-          'Slug is empty or too long after normalization',
-        );
-    }
-    return this.repository.updateBrand(id, normalized);
-  }
-
-  deleteBrand(id: string) {
-    return this.repository.deleteBrand(id);
-  }
-
-  listProducts(input: Parameters<CatalogRepository['listProducts']>[0]) {
-    return this.repository.listProducts(input);
-  }
-
-  getProduct(id: string) {
-    return this.repository.findProduct(id).then((product) => {
-      if (!product)
-        throw new AppError(404, 'NOT_FOUND', 'Product was not found');
-      return product;
-    });
-  }
-
   async createProduct(
     input: Omit<
       ProductWriteInput,
@@ -501,7 +250,7 @@ export class CatalogService {
       discountType?: ProductWriteInput['discountType'];
       discountValue?: string | null;
     },
-  ) {
+  ): Promise<ProductRecord> {
     const normalized = normalizeProductInput({
       ...input,
       description: input.description ?? null,
@@ -511,7 +260,10 @@ export class CatalogService {
     return this.repository.createProduct(normalized);
   }
 
-  async updateProduct(id: string, input: Partial<ProductWriteInput>) {
+  async updateProduct(
+    id: string,
+    input: Partial<ProductWriteInput>,
+  ): Promise<ProductRecord> {
     const current = await this.getProduct(id);
     const merged = normalizeProductInput({
       categoryId: input.categoryId ?? current.categoryId,
@@ -535,7 +287,7 @@ export class CatalogService {
     return this.repository.updateProduct(id, merged);
   }
 
-  deactivateProduct(id: string) {
+  deactivateProduct(id: string): Promise<void> {
     return this.repository.deactivateProduct(id);
   }
 
@@ -547,7 +299,7 @@ export class CatalogService {
       altText?: string | null;
       sortOrder: number;
     },
-  ) {
+  ): Promise<ProductImageRecord> {
     return this.repository.createProductImage(productId, {
       ...input,
       publicId: input.publicId ?? null,
@@ -564,14 +316,15 @@ export class CatalogService {
       altText: string | null;
       sortOrder: number;
     }>,
-  ) {
+  ): Promise<ProductImageRecord> {
     const normalized = { ...input };
-    if (input.altText !== undefined)
+    if (input.altText !== undefined) {
       normalized.altText = input.altText?.trim() || null;
+    }
     return this.repository.updateProductImage(productId, imageId, normalized);
   }
 
-  deleteProductImage(productId: string, imageId: string) {
+  deleteProductImage(productId: string, imageId: string): Promise<void> {
     return this.repository.deleteProductImage(productId, imageId);
   }
 
@@ -586,7 +339,7 @@ export class CatalogService {
       lowStockThreshold: number;
       isActive: boolean;
     },
-  ) {
+  ): Promise<ProductVariantRecord> {
     const size = normalizeSize(input.size);
     return this.repository.createProductVariant(productId, {
       sku: normalizeSku(input.sku),
@@ -612,13 +365,14 @@ export class CatalogService {
       isActive: boolean;
     }>,
     actorAdminId?: string,
-  ) {
+  ): Promise<ProductVariantRecord> {
     const currentProduct = await this.getProduct(productId);
     const current = currentProduct.variants.find(
       (variant) => variant.id === variantId,
     );
-    if (!current)
+    if (!current) {
       throw new AppError(404, 'NOT_FOUND', 'Product variant was not found');
+    }
     const size =
       input.size === undefined
         ? {
@@ -661,7 +415,10 @@ export class CatalogService {
     });
   }
 
-  deactivateProductVariant(productId: string, variantId: string) {
+  deactivateProductVariant(
+    productId: string,
+    variantId: string,
+  ): Promise<void> {
     return this.repository.deactivateProductVariant(productId, variantId);
   }
 }

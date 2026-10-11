@@ -11,8 +11,7 @@ import type {
   PageResult,
   ProductImageRecord,
   ProductRecord,
-  ProductVariantRecord,
-} from '../src/modules/catalog/catalog.types';
+} from './test-catalog';
 import { MemoryCheckoutRepository } from '../src/modules/checkout/memory-checkout.repository';
 import type { OrderSnapshot } from '../src/modules/checkout/checkout.types';
 import type { InventoryMovementRecord } from '../src/modules/inventory/inventory.types';

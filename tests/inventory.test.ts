@@ -16,8 +16,7 @@ import type {
   ProductRecord,
   ProductVariantRecord,
   ProductVariantWriteInput,
-  ProductWriteInput,
-} from '../src/modules/catalog/catalog.types';
+} from './test-catalog';
 import {
   MemoryInventoryRepository,
   type MemoryVariantItem,

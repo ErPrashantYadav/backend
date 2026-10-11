@@ -1,27 +1,9 @@
-export interface PageResult<T> {
-  items: T[];
-  pagination: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-export interface PublicCategory {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  imageUrl: string | null;
-}
-
-export interface PublicBrand {
-  id: string;
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-}
+import type { PageResult } from '../../types/pagination';
+import type {
+  CategoryRecord,
+  PublicCategory,
+} from '../categories/categories.types';
+import type { BrandRecord, PublicBrand } from '../brands/brands.types';
 
 export interface PublicVariant {
   id: string;
@@ -54,27 +36,6 @@ export interface PublicProduct {
   } | null;
   images: PublicProductImage[];
   variants: PublicVariant[];
-}
-
-export interface CategoryRecord {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  imageUrl: string | null;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface BrandRecord {
-  id: string;
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface ProductImageRecord {
@@ -123,37 +84,36 @@ export interface ProductRecord {
   variants: ProductVariantRecord[];
 }
 
-export interface CatalogRepository {
-  listCategories(input: {
-    page: number;
-    pageSize: number;
-    search?: string;
-    isActive?: boolean;
-  }): Promise<PageResult<CategoryRecord>>;
-  findCategory(id: string): Promise<CategoryRecord | null>;
-  createCategory(
-    input: Omit<CategoryRecord, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<CategoryRecord>;
-  updateCategory(
-    id: string,
-    input: Partial<Omit<CategoryRecord, 'id' | 'createdAt' | 'updatedAt'>>,
-  ): Promise<CategoryRecord>;
-  deleteCategory(id: string): Promise<void>;
-  listBrands(input: {
-    page: number;
-    pageSize: number;
-    search?: string;
-    isActive?: boolean;
-  }): Promise<PageResult<BrandRecord>>;
-  findBrand(id: string): Promise<BrandRecord | null>;
-  createBrand(
-    input: Omit<BrandRecord, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<BrandRecord>;
-  updateBrand(
-    id: string,
-    input: Partial<Omit<BrandRecord, 'id' | 'createdAt' | 'updatedAt'>>,
-  ): Promise<BrandRecord>;
-  deleteBrand(id: string): Promise<void>;
+export interface ProductWriteInput {
+  categoryId: string;
+  brandId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  discountType: 'PERCENTAGE' | 'FIXED' | null;
+  discountValue: string | null;
+  isActive: boolean;
+}
+
+export interface ProductImageWriteInput {
+  imageUrl: string;
+  publicId: string | null;
+  altText: string | null;
+  sortOrder: number;
+}
+
+export interface ProductVariantWriteInput {
+  sku: string;
+  sizeLabel: string;
+  sizeMilliliters: number;
+  purchasePrice: string;
+  sellingPrice: string;
+  stock: number;
+  lowStockThreshold: number;
+  isActive: boolean;
+}
+
+export interface ProductRepository {
   listProducts(input: {
     page: number;
     pageSize: number;
@@ -192,33 +152,4 @@ export interface CatalogRepository {
     input: Partial<ProductVariantWriteInput>,
   ): Promise<ProductVariantRecord>;
   deactivateProductVariant(productId: string, variantId: string): Promise<void>;
-}
-
-export interface ProductWriteInput {
-  categoryId: string;
-  brandId: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  discountType: 'PERCENTAGE' | 'FIXED' | null;
-  discountValue: string | null;
-  isActive: boolean;
-}
-
-export interface ProductImageWriteInput {
-  imageUrl: string;
-  publicId: string | null;
-  altText: string | null;
-  sortOrder: number;
-}
-
-export interface ProductVariantWriteInput {
-  sku: string;
-  sizeLabel: string;
-  sizeMilliliters: number;
-  purchasePrice: string;
-  sellingPrice: string;
-  stock: number;
-  lowStockThreshold: number;
-  isActive: boolean;
 }
