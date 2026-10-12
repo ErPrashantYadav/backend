@@ -1,6 +1,18 @@
 # Liquor Shop Backend
 
-Independent Node.js, TypeScript, Express and PostgreSQL backend. The initial Prisma schema defines admin authorization, catalog and customer identity foundations; commerce routes and order/inventory models are not included yet.
+Independent Node.js, TypeScript, Express and PostgreSQL e-commerce backend powering the Liquor Shop storefront and administration portal.
+
+## API Documentation & Postman
+
+- **Comprehensive API & Developer Guide**: [docs/api-documentation.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/api-documentation.md)
+- **Database & Admin Operations Guide**: [docs/database-and-admin-operations.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/database-and-admin-operations.md)
+- **Cloudinary Upload Testing Guide**: [docs/cloudinary-upload-testing.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/cloudinary-upload-testing.md)
+- **Notification Provider Testing Guide**: [docs/notification-provider-testing.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/notification-provider-testing.md)
+- **OpenAPI 3.1 Specification (JSON)**: [docs/openapi.json](file:///d:/KreativeMandu/oldLiquor/backend/docs/openapi.json)
+- **OpenAPI 3.1 Specification (YAML)**: [docs/openapi.yaml](file:///d:/KreativeMandu/oldLiquor/backend/docs/openapi.yaml)
+- **Postman API Testing Guide**: [docs/postman-api-testing-guide.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman-api-testing-guide.md)
+- **Postman Collection (v2.1)**: [docs/postman/liquor-shop-backend.postman_collection.json](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman/liquor-shop-backend.postman_collection.json)
+- **Postman Environment Template**: [docs/postman/liquor-shop-backend.postman_environment.json](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman/liquor-shop-backend.postman_environment.json)
 
 ## Requirements
 
@@ -35,7 +47,7 @@ Protected management endpoints are mounted at `/api/admin`: `GET/POST /users`, `
 
 ## Catalog Management
 
-Protected catalog routes use `/api/admin/categories`, `/api/admin/brands`, `/api/admin/products`, `/api/admin/products/:id/images`, and `/api/admin/products/:id/variants`. Admin reorder routes `PUT /api/admin/categories/reorder` (requires `catalog.categories.update`) and `PUT /api/admin/brands/reorder` (requires `catalog.brands.update`) persist custom display order via `$transaction`. Each resource supports permission-scoped list/detail/create/update/delete operations where applicable; admin lists support pagination, and lists support search/filtering. Category and brand deletes return a conflict while products reference them; delete operations for products and variants deactivate them to preserve future order/inventory references. Product image records store HTTPS image URLs and metadata; image upload integration is not part of these CRUD routes. Variant size input accepts `ml` or `L` and is normalized to a positive integer millilitre key and canonical `<n> ml` label. SKUs are trimmed and uppercased; slugs use NFKC, lowercase, and hyphen-separated Unicode letters/numbers. Discounts exist only on products.
+Protected catalog routes use `/api/admin/categories`, `/api/admin/brands`, `/api/admin/products`, `/api/admin/products/:id/images`, and `/api/admin/products/:id/variants`. Admin brand reorder route `PUT /api/admin/brands/reorder` (requires `catalog.brands.update`) persists custom display order via `$transaction` (Category reordering is not supported). Each resource supports permission-scoped list/detail/create/update/delete operations where applicable; admin lists support pagination, and lists support search/filtering. Category and brand deletes return a conflict while products reference them; delete operations for products and variants deactivate them to preserve future order/inventory references. Product image records store HTTPS image URLs and metadata; image upload integration is not part of these CRUD routes. Variant size input accepts `ml` or `L` and is normalized to a positive integer millilitre key and canonical `<n> ml` label. SKUs are trimmed and uppercased; slugs use NFKC, lowercase, and hyphen-separated Unicode letters/numbers. Discounts exist only on products.
 
 ## Admin Dashboard and Sales Analytics
 
@@ -75,6 +87,20 @@ npm run admin:provision:initial
 ```
 
 The command normalizes email, hashes with the authentication module's Argon2id parameters, and atomically creates the initial `Initial Super Administrator` role, all admin-management and catalog permission keys, their assignments, and the first active admin. Before writing, it verifies that `current_database()` exactly matches `INITIAL_ADMIN_EXPECTED_DATABASE`. It refuses to proceed if any admin exists, the initial role exists, any required permission already exists, or any role-permission assignment exists. It never overwrites records. If any check or insert fails, the transaction rolls back. If the state was partially populated by an earlier/manual process, stop and inspect it read-only, then reconcile it deliberately in a separately reviewed procedure before retrying. Do not delete partial records blindly or rerun with different credentials expecting an update. The provisioning command has been added but must not be run until the target database is explicitly approved.
+
+### Sample Catalog Seeding
+
+For testing and local development, an idempotent sample catalog seed script is provided:
+
+```powershell
+# Safe non-destructive dry run (validates schema constraints without DB writes)
+npm run db:seed:sample -- --dry-run
+
+# Live seed execution (upserts sample categories, brands, products, and variants)
+npm run db:seed:sample
+```
+
+The dataset includes 5 categories, 5 brands, 7 products, and 15 variants with clearly identifiable `SAMPLE-*` SKUs. The script is protected against running in production environments unless `ALLOW_PRODUCTION_SAMPLE_SEED=true` is set. It never modifies admin users, roles, permissions, orders, payments, customers, or inventory movements.
 
 ## Database Schema and Migrations
 

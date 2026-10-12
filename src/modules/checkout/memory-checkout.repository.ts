@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { AppError } from '../../errors/app-error';
 import type { CartRepository } from '../cart/cart.types';
 import type { InventoryMovementRecord } from '../inventory/inventory.types';

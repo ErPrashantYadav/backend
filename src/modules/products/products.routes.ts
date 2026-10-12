@@ -143,6 +143,13 @@ export function createAdminProductRouter(
     }),
   );
 
+  router.param('id', (_request, _response, next, id) => {
+    if (id === 'reorder') {
+      return next('route');
+    }
+    next();
+  });
+
   router.get(
     '/:id',
     requireAdminPermission('catalog.products.read'),

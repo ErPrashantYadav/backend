@@ -19,4 +19,3 @@ export class ConsoleWhatsAppProvider implements WhatsAppProvider {
 }
 
 export { MetaWhatsAppProvider } from './meta-whatsapp.provider';
-export { createWhatsAppProvider } from './provider-factory';

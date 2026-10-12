@@ -98,8 +98,10 @@ import type {
 } from './modules/notifications/notification.types';
 import { PrismaNotificationOutboxRepository } from './modules/notifications/notification-outbox.repository';
 import { MemoryNotificationOutboxRepository } from './modules/notifications/memory-notification-outbox.repository';
-import { createEmailProvider } from './modules/notifications/providers/email.provider';
-import { createWhatsAppProvider } from './modules/notifications/providers/whatsapp.provider';
+import {
+  createEmailProvider,
+  createWhatsAppProvider,
+} from './modules/notifications/providers/provider-factory';
 import { NotificationOutboxService } from './modules/notifications/notification-outbox.service';
 import { PrismaPromoCodeRepository } from './modules/promo-code/promo-code.repository';
 import { MemoryPromoCodeRepository } from './modules/promo-code/memory-promo-code.repository';

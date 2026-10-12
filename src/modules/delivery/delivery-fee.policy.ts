@@ -29,7 +29,7 @@ export class ConfigurableDeliveryFeePolicy implements DeliveryFeePolicy {
     if (
       this.config.freeDeliveryThreshold !== undefined &&
       this.config.freeDeliveryThreshold !== null &&
-      this.config.freeDeliveryThreshold > 0 &&
+      Number(this.config.freeDeliveryThreshold) > 0 &&
       subtotalDecimal.greaterThanOrEqualTo(this.config.freeDeliveryThreshold)
     ) {
       return {
@@ -40,9 +40,11 @@ export class ConfigurableDeliveryFeePolicy implements DeliveryFeePolicy {
         isFreeDelivery: true,
         breakdown: {
           mode: this.config.mode,
-          baseAmount: this.config.baseAmount.toFixed(2),
+          baseAmount: Number(this.config.baseAmount ?? 0).toFixed(2),
           subtotal: subtotalDecimal.toFixed(2),
-          freeDeliveryThreshold: this.config.freeDeliveryThreshold.toFixed(2),
+          freeDeliveryThreshold: Number(
+            this.config.freeDeliveryThreshold,
+          ).toFixed(2),
           isFreeDelivery: true,
           unresolvedPolicyNotes: [...UNRESOLVED_DELIVERY_POLICY_DECISIONS],
         },
@@ -51,7 +53,7 @@ export class ConfigurableDeliveryFeePolicy implements DeliveryFeePolicy {
 
     // 2. If no distance is provided (coordinates omitted), use fallback amount
     if (input.distanceMeters === undefined) {
-      const fallback = (this.config.fallbackAmount ?? 0).toFixed(2);
+      const fallback = Number(this.config.fallbackAmount ?? 0).toFixed(2);
       return {
         fee: fallback,
         currency: this.currency,
@@ -65,7 +67,7 @@ export class ConfigurableDeliveryFeePolicy implements DeliveryFeePolicy {
           freeDeliveryThreshold:
             this.config.freeDeliveryThreshold !== undefined &&
             this.config.freeDeliveryThreshold !== null
-              ? this.config.freeDeliveryThreshold.toFixed(2)
+              ? Number(this.config.freeDeliveryThreshold).toFixed(2)
               : null,
           isFreeDelivery: false,
           unresolvedPolicyNotes: [...UNRESOLVED_DELIVERY_POLICY_DECISIONS],
@@ -74,7 +76,7 @@ export class ConfigurableDeliveryFeePolicy implements DeliveryFeePolicy {
     }
 
     // 3. Compute fee based on configured policy mode
-    const baseDec = new Prisma.Decimal(this.config.baseAmount);
+    const baseDec = new Prisma.Decimal(this.config.baseAmount ?? 0);
     const distanceKm = input.distanceMeters / 1000;
     const distanceKmDec = new Prisma.Decimal(distanceKm);
 
@@ -82,7 +84,8 @@ export class ConfigurableDeliveryFeePolicy implements DeliveryFeePolicy {
     let distanceFeeDec: Prisma.Decimal | undefined;
 
     switch (this.config.mode) {
-      case 'FIXED': {
+      case 'FIXED':
+      case 'FLAT' as unknown as 'FIXED': {
         feeDec = baseDec;
         break;
       }
@@ -107,7 +110,7 @@ export class ConfigurableDeliveryFeePolicy implements DeliveryFeePolicy {
       case 'PER_KM':
       default: {
         // Base amount + distanceKm * perKmAmount, rounded to 2 decimals
-        const perKmDec = new Prisma.Decimal(this.config.perKmAmount);
+        const perKmDec = new Prisma.Decimal(this.config.perKmAmount ?? 0);
         distanceFeeDec = distanceKmDec.times(perKmDec);
         feeDec = baseDec.plus(distanceFeeDec);
         break;
@@ -126,8 +129,8 @@ export class ConfigurableDeliveryFeePolicy implements DeliveryFeePolicy {
         mode: this.config.mode,
         baseAmount: baseDec.toFixed(2),
         perKmAmount:
-          this.config.mode === 'PER_KM'
-            ? this.config.perKmAmount.toFixed(2)
+          this.config.mode === 'PER_KM' && this.config.perKmAmount !== undefined
+            ? Number(this.config.perKmAmount).toFixed(2)
             : undefined,
         distanceKm: distanceKm.toFixed(2),
         distanceFee: distanceFeeDec ? distanceFeeDec.toFixed(2) : undefined,
@@ -135,7 +138,7 @@ export class ConfigurableDeliveryFeePolicy implements DeliveryFeePolicy {
         freeDeliveryThreshold:
           this.config.freeDeliveryThreshold !== undefined &&
           this.config.freeDeliveryThreshold !== null
-            ? this.config.freeDeliveryThreshold.toFixed(2)
+            ? Number(this.config.freeDeliveryThreshold).toFixed(2)
             : null,
         isFreeDelivery: false,
         unresolvedPolicyNotes: [...UNRESOLVED_DELIVERY_POLICY_DECISIONS],

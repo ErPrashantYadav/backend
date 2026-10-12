@@ -19,4 +19,3 @@ export class ConsoleEmailProvider implements EmailProvider {
 
 export { ResendEmailProvider } from './resend-email.provider';
 export { SmtpEmailProvider } from './smtp-email.provider';
-export { createEmailProvider } from './provider-factory';

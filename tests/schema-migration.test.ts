@@ -130,3 +130,161 @@ describe('initial liquor-shop migration', () => {
     expect(migrationSql).not.toMatch(/countryOfOrigin|alcoholPercentage/i);
   });
 });
+
+describe('full migration sequence (migrations 1 to 14)', () => {
+  const EXPECTED_MIGRATIONS = [
+    '20261009000000_initial_liquor_shop',
+    '20261011000000_inventory_movements',
+    '20261011000100_guest_cart_and_checkout',
+    '20261011000200_payment_methods',
+    '20261011000300_qr_payment_submissions',
+    '20261011000400_admin_orders_and_audit_trail',
+    '20261011000500_notification_outbox',
+    '20261011000600_promo_codes_and_discounts',
+    '20261011000700_contact_inquiries',
+    '20261011000800_banners',
+    '20261011000900_gallery',
+    '20261011001000_store_settings',
+    '20261011001100_social_media',
+    '20261011001200_brands_categories_display_order',
+  ];
+
+  it('contains all 14 migrations in strictly sequential chronological order', () => {
+    for (const dirName of EXPECTED_MIGRATIONS) {
+      const sqlPath = resolve(
+        process.cwd(),
+        'prisma/migrations',
+        dirName,
+        'migration.sql',
+      );
+      const sql = readFileSync(sqlPath, 'utf8');
+      expect(sql.trim().length).toBeGreaterThan(0);
+      expect(sql).not.toMatch(/^\s*(DROP\s+TABLE|TRUNCATE)\b/im);
+    }
+  });
+
+  it('verifies key domain models and altered columns across migration files', () => {
+    const migrationsDir = resolve(process.cwd(), 'prisma/migrations');
+
+    // Inventory movements
+    const invSql = readFileSync(
+      resolve(
+        migrationsDir,
+        '20261011000000_inventory_movements',
+        'migration.sql',
+      ),
+      'utf8',
+    );
+    expect(invSql).toContain('CREATE TABLE "InventoryMovement"');
+
+    // Cart and checkout
+    const checkoutSql = readFileSync(
+      resolve(
+        migrationsDir,
+        '20261011000100_guest_cart_and_checkout',
+        'migration.sql',
+      ),
+      'utf8',
+    );
+    expect(checkoutSql).toContain('CREATE TABLE "Order"');
+    expect(checkoutSql).toContain('CREATE TABLE "OrderItem"');
+
+    // Payment methods & submissions
+    const pmSql = readFileSync(
+      resolve(migrationsDir, '20261011000200_payment_methods', 'migration.sql'),
+      'utf8',
+    );
+    expect(pmSql).toContain('CREATE TABLE "PaymentMethod"');
+
+    const psSql = readFileSync(
+      resolve(
+        migrationsDir,
+        '20261011000300_qr_payment_submissions',
+        'migration.sql',
+      ),
+      'utf8',
+    );
+    expect(psSql).toContain('CREATE TABLE "PaymentSubmission"');
+
+    // Audit trail
+    const auditSql = readFileSync(
+      resolve(
+        migrationsDir,
+        '20261011000400_admin_orders_and_audit_trail',
+        'migration.sql',
+      ),
+      'utf8',
+    );
+    expect(auditSql).toContain('CREATE TABLE "AuditLog"');
+
+    // Notification outbox
+    const notifSql = readFileSync(
+      resolve(
+        migrationsDir,
+        '20261011000500_notification_outbox',
+        'migration.sql',
+      ),
+      'utf8',
+    );
+    expect(notifSql).toContain('CREATE TABLE "NotificationOutbox"');
+
+    // Promo codes
+    const promoSql = readFileSync(
+      resolve(
+        migrationsDir,
+        '20261011000600_promo_codes_and_discounts',
+        'migration.sql',
+      ),
+      'utf8',
+    );
+    expect(promoSql).toContain('CREATE TABLE "PromoCode"');
+
+    // Contact inquiries
+    const contactSql = readFileSync(
+      resolve(
+        migrationsDir,
+        '20261011000700_contact_inquiries',
+        'migration.sql',
+      ),
+      'utf8',
+    );
+    expect(contactSql).toContain('CREATE TABLE "ContactInquiry"');
+
+    // Banners & Gallery
+    const bannerSql = readFileSync(
+      resolve(migrationsDir, '20261011000800_banners', 'migration.sql'),
+      'utf8',
+    );
+    expect(bannerSql).toContain('CREATE TABLE "Banner"');
+
+    const gallerySql = readFileSync(
+      resolve(migrationsDir, '20261011000900_gallery', 'migration.sql'),
+      'utf8',
+    );
+    expect(gallerySql).toContain('CREATE TABLE "GalleryItem"');
+
+    // Store settings & Social Media
+    const settingsSql = readFileSync(
+      resolve(migrationsDir, '20261011001000_store_settings', 'migration.sql'),
+      'utf8',
+    );
+    expect(settingsSql).toContain('CREATE TABLE "StoreSettings"');
+
+    const socialSql = readFileSync(
+      resolve(migrationsDir, '20261011001100_social_media', 'migration.sql'),
+      'utf8',
+    );
+    expect(socialSql).toContain('CREATE TABLE "SocialMedia"');
+
+    // Display order on Brand and Category
+    const displayOrderSql = readFileSync(
+      resolve(
+        migrationsDir,
+        '20261011001200_brands_categories_display_order',
+        'migration.sql',
+      ),
+      'utf8',
+    );
+    expect(displayOrderSql).toContain('"displayOrder"');
+  });
+});

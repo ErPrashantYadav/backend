@@ -22,7 +22,8 @@
     "admin:provision:initial": "tsx scripts/provision-initial-admin.ts",
     "notifications:worker": "tsx scripts/notification-worker.ts",
     "db:migrate": "prisma migrate deploy --schema prisma/schema.prisma",
-    "db:migrate:dev": "prisma migrate dev --schema prisma/schema.prisma"
+    "db:migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
+    "db:seed:sample": "tsx scripts/seed-sample-catalog.ts"
   },
   "dependencies": {
     "@prisma/client": "6.12.0",

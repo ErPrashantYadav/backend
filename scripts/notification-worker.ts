@@ -4,8 +4,10 @@ import { createLogger } from '../src/lib/logger';
 import { PrismaNotificationOutboxRepository } from '../src/modules/notifications/notification-outbox.repository';
 import { NotificationOutboxService } from '../src/modules/notifications/notification-outbox.service';
 import { NotificationWorker } from '../src/modules/notifications/notification-worker.runner';
-import { createEmailProvider } from '../src/modules/notifications/providers/email.provider';
-import { createWhatsAppProvider } from '../src/modules/notifications/providers/whatsapp.provider';
+import {
+  createEmailProvider,
+  createWhatsAppProvider,
+} from '../src/modules/notifications/providers/provider-factory';
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
