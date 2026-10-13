@@ -100,7 +100,7 @@ npm run db:seed:sample -- --dry-run
 npm run db:seed:sample
 ```
 
-The dataset includes 5 categories, 5 brands, 7 products, and 15 variants with clearly identifiable `SAMPLE-*` SKUs. The script is protected against running in production environments unless `ALLOW_PRODUCTION_SAMPLE_SEED=true` is set. It never modifies admin users, roles, permissions, orders, payments, customers, or inventory movements.
+The dataset includes 5 categories, 5 brands, 7 products, and 14 variants with clearly identifiable `SAMPLE-*` SKUs. The script is protected against running in production environments unless `ALLOW_PRODUCTION_SAMPLE_SEED=true` is set. It never modifies admin users, roles, permissions, orders, payments, customers, or inventory movements.
 
 ## Database Schema and Migrations
 

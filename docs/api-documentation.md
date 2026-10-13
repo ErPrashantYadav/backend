@@ -154,7 +154,7 @@ npm run db:seed:sample -- --dry-run
 npm run db:seed:sample
 ```
 
-The script populates 5 categories, 5 brands, 7 products, and 15 variants with `SAMPLE-*` SKUs. It is blocked in production by default unless `ALLOW_PRODUCTION_SAMPLE_SEED=true` is set.
+The script populates 5 categories, 5 brands, 7 products, and 14 variants with `SAMPLE-*` SKUs. It is blocked in production by default unless `ALLOW_PRODUCTION_SAMPLE_SEED=true` is set.
 
 > [!NOTE]
 > For a detailed operational runbook covering database safety, read-only vs mutating commands, migration deploy instructions, and sample seed data guidelines, consult [`docs/database-and-admin-operations.md`](file:///d:/KreativeMandu/oldLiquor/backend/docs/database-and-admin-operations.md).

@@ -69,7 +69,7 @@ curl http://localhost:3000/api/health/ready
   - **Categories** (5): Whisky, Vodka, Rum, Beer, Wine.
   - **Brands** (5): Old Durbar, Khukri, Ruslan, Gorkha, Divine Wines.
   - **Products** (7): Old Durbar Black Chimney, Old Durbar 12Y Reserve, Khukri XXX Coronation Rum, Khukri Spice Rum, Ruslan Ultra Premium Vodka, Gorkha Craft Beer, Divine Red Wine Classic Reserve.
-  - **Product Variants** (15): Canonical volume variants (750 ml, 375 ml, 180 ml, 650 ml, 330 ml) with calibrated pricing and stock levels.
+  - **Product Variants** (14): Canonical volume variants (750 ml, 375 ml, 180 ml, 650 ml, 330 ml) with calibrated pricing and stock levels.
 - **Excluded Domains**: Sample seeding strictly preserves admin users, roles, permissions, orders, payments, customers, and inventory movements without modifications.
 
 ### 3.2 Distinguishing Seed Data vs Admin Provisioning
