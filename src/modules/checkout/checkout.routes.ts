@@ -76,13 +76,15 @@ const checkoutSchema = z.object({
     deliveryAddress: z
       .string()
       .trim()
-      .min(5, 'Delivery address is required')
-      .max(255),
+      .min(3, 'Delivery address must be at least 3 characters')
+      .max(255)
+      .optional()
+      .nullable(),
     email: z.string().trim().email().optional().nullable(),
     coordinates: z
       .object({
-        latitude: z.number().min(-90).max(90),
-        longitude: z.number().min(-180).max(180),
+        latitude: z.number(),
+        longitude: z.number(),
       })
       .optional()
       .nullable(),
@@ -100,18 +102,25 @@ export function createCheckoutRouter(
   deliveryFeeEstimator?: DeliveryFeeEstimator,
   promoCodeRepository?: PromoCodeRepository,
   promoCodeService?: PromoCodeService,
+  storeSettingsRepository?: import('../store-settings/store-settings.types').StoreSettingsRepository,
+  geocodingProvider?: import('../routing/routing.types').GeocodingProvider,
+  checkoutService?: CheckoutService,
 ): Router {
   const router = Router();
-  const service = new CheckoutService(
-    checkoutRepository,
-    productRepository,
-    cartRepository,
-    deliveryFeeEstimator,
-    undefined,
-    paymentMethodRepository,
-    promoCodeRepository,
-    promoCodeService,
-  );
+  const service =
+    checkoutService ??
+    new CheckoutService(
+      checkoutRepository,
+      productRepository,
+      cartRepository,
+      deliveryFeeEstimator,
+      undefined,
+      paymentMethodRepository,
+      promoCodeRepository,
+      promoCodeService,
+      storeSettingsRepository,
+      geocodingProvider,
+    );
 
   const orderLookupLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,

@@ -12,6 +12,10 @@ export interface RoutingProvider {
   getRoute(origin: Coordinates, destination: Coordinates): Promise<RouteResult>;
 }
 
+export interface GeocodingProvider {
+  reverseGeocode(coordinates: Coordinates): Promise<string>;
+}
+
 export interface GeographicBounds {
   minLatitude: number;
   maxLatitude: number;

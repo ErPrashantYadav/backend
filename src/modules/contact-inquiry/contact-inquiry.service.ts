@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AppError } from '../../errors/app-error';
 import type { AuditService } from '../audit/audit.service';
+import type { NotificationOutboxService } from '../notifications/notification-outbox.service';
 import type {
   ContactInquiryRecord,
   ContactInquiryRepository,
@@ -61,6 +62,7 @@ export class ContactInquiryService {
   constructor(
     private readonly repository: ContactInquiryRepository,
     private readonly auditService?: AuditService,
+    private readonly notificationOutboxService?: NotificationOutboxService,
   ) {}
 
   async submitPublicInquiry(rawInput: unknown): Promise<{
@@ -92,6 +94,30 @@ export class ContactInquiryService {
       subject,
       message,
     });
+
+    if (this.notificationOutboxService) {
+      try {
+        const inquiryData = {
+          id: record.id,
+          fullName: record.name,
+          email: record.email,
+          phone: record.phone,
+          subject: record.subject,
+          message: record.message,
+          createdAt: record.createdAt,
+        };
+        await this.notificationOutboxService.enqueueContactInquiryAdminEmail(
+          inquiryData,
+        );
+        if (record.email) {
+          await this.notificationOutboxService.enqueueContactInquiryCustomerAck(
+            inquiryData,
+          );
+        }
+      } catch {
+        // Enqueueing failure must not cause contact inquiry submission to fail
+      }
+    }
 
     return {
       id: record.id,

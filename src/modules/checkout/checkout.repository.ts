@@ -1,6 +1,7 @@
 import { PaymentStatus, Prisma } from '@prisma/client';
 import { AppError } from '../../errors/app-error';
 import { prisma } from '../../lib/prisma';
+import { normalizeCustomerPhone } from '../../utils/phone';
 import type {
   CheckoutRepository,
   CreateOrderParams,
@@ -185,19 +186,55 @@ export class PrismaCheckoutRepository implements CheckoutRepository {
               }
             }
 
-            const customer = await tx.customer.create({
-              data: {
-                name: params.customer.name,
-                phone: params.customer.phone,
-                deliveryAddress: params.customer.deliveryAddress,
-                email: params.customer.email || null,
+            const normalizedPhone = normalizeCustomerPhone(
+              params.customer.phone,
+            );
+            const trimmedPhone = params.customer.phone.trim();
+
+            // Acquire PostgreSQL transaction-level advisory lock on normalized phone to serialize concurrent checkouts
+            await tx.$executeRaw`
+              SELECT pg_advisory_xact_lock(hashtext('liquor_customer'), hashtext(${normalizedPhone}::text))
+            `;
+
+            const existingCustomer = await tx.customer.findFirst({
+              where: {
+                OR: [{ phone: normalizedPhone }, { phone: trimmedPhone }],
               },
+              orderBy: { createdAt: 'asc' },
             });
+
+            let customerId: string;
+            if (existingCustomer) {
+              customerId = existingCustomer.id;
+              await tx.customer.update({
+                where: { id: existingCustomer.id },
+                data: {
+                  name: params.customer.name.trim(),
+                  deliveryAddress: params.customer.deliveryAddress.trim(),
+                  phone: normalizedPhone,
+                  ...(params.customer.email && params.customer.email.trim()
+                    ? { email: params.customer.email.trim().toLowerCase() }
+                    : {}),
+                },
+              });
+            } else {
+              const newCustomer = await tx.customer.create({
+                data: {
+                  name: params.customer.name.trim(),
+                  phone: normalizedPhone,
+                  deliveryAddress: params.customer.deliveryAddress.trim(),
+                  email: params.customer.email
+                    ? params.customer.email.trim().toLowerCase()
+                    : null,
+                },
+              });
+              customerId = newCustomer.id;
+            }
 
             const order = await tx.order.create({
               data: {
                 orderNumber: params.orderNumber,
-                customerId: customer.id,
+                customerId,
                 customerName: params.customer.name,
                 customerPhone: params.customer.phone,
                 customerEmail: params.customer.email || null,
@@ -261,30 +298,50 @@ export class PrismaCheckoutRepository implements CheckoutRepository {
             }
 
             if (this.notificationOutboxService) {
+              const notificationSnapshot = {
+                id: order.id,
+                orderNumber: order.orderNumber,
+                customerName: order.customerName,
+                customerPhone: order.customerPhone,
+                customerEmail: order.customerEmail,
+                deliveryAddress: order.deliveryAddress,
+                subtotal: order.subtotal.toFixed(2),
+                discountTotal: order.discountTotal.toFixed(2),
+                deliveryFee: order.deliveryFee.toFixed(2),
+                total: order.total.toFixed(2),
+                promoCode: order.promoCode,
+                promoDiscount: order.promoDiscount
+                  ? order.promoDiscount.toFixed(2)
+                  : '0.00',
+                paymentMethodName: order.paymentMethodName,
+                paymentMethodCode: order.paymentMethodCode,
+                paymentStatus: order.paymentStatus,
+                items: params.items.map((i) => ({
+                  productName: i.productName,
+                  sku: i.sku,
+                  sizeLabel: i.sizeLabel,
+                  quantity: i.quantity,
+                  unitPrice: i.unitPrice,
+                  unitDiscount: i.unitDiscount,
+                  effectiveUnitPrice: i.effectiveUnitPrice,
+                  subtotal: i.subtotal,
+                })),
+                createdAt: order.createdAt,
+              };
+
               await this.notificationOutboxService.enqueueOrderCreatedWhatsApp(
-                {
-                  id: order.id,
-                  orderNumber: order.orderNumber,
-                  customerName: order.customerName,
-                  customerPhone: order.customerPhone,
-                  customerEmail: order.customerEmail,
-                  deliveryAddress: order.deliveryAddress,
-                  total: order.total.toFixed(2),
-                  paymentMethodName: order.paymentMethodName,
-                  paymentMethodCode: order.paymentMethodCode,
-                  items: params.items.map((i) => ({
-                    productName: i.productName,
-                    sizeLabel: i.sizeLabel,
-                    quantity: i.quantity,
-                    unitPrice: i.unitPrice,
-                  })),
-                  createdAt: order.createdAt,
-                },
+                notificationSnapshot,
+                tx,
+              );
+              await this.notificationOutboxService.enqueueOrderCreatedAdminEmail(
+                notificationSnapshot,
                 tx,
               );
             }
 
-            const mapped = mapOrder(order);
+            const mapped = mapOrder(
+              order as Prisma.OrderGetPayload<{ include: { items: true } }>,
+            );
             mapped.orderLookupToken = params.orderLookupToken;
             return mapped;
           },

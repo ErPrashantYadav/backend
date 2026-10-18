@@ -1094,6 +1094,7 @@ describe('Admin Customer Management & Order History', () => {
           phone: '+9779899999999',
           deliveryAddress: 'Jawalakhel, Lalitpur',
           email: 'guest.e2e@example.com',
+          coordinates: { latitude: 27.7172, longitude: 85.324 },
         },
         items: [
           {

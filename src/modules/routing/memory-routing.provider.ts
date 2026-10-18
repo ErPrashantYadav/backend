@@ -1,5 +1,7 @@
+import { AppError } from '../../errors/app-error';
 import type {
   Coordinates,
+  GeocodingProvider,
   RouteResult,
   RoutingProvider,
 } from './routing.types';
@@ -68,6 +70,67 @@ export class MemoryRoutingProvider implements RoutingProvider {
     }
 
     return this.defaultResult;
+  }
+
+  get callCount(): number {
+    return this.calls.length;
+  }
+
+  clearCalls(): void {
+    this.calls = [];
+  }
+}
+
+export class MemoryGeocodingProvider implements GeocodingProvider {
+  public defaultAddress = 'Baluwatar, Kathmandu 44600, Nepal';
+  public addressMap: Map<string, string> = new Map();
+  public simulatedError: Error | null = null;
+  public isUnconfigured = false;
+  public calls: Coordinates[] = [];
+
+  constructor(defaultAddress?: string) {
+    if (defaultAddress) {
+      this.defaultAddress = defaultAddress;
+    }
+  }
+
+  private makeKey(coords: Coordinates): string {
+    return `${coords.latitude.toFixed(4)},${coords.longitude.toFixed(4)}`;
+  }
+
+  setAddress(coords: Coordinates, address: string): void {
+    this.addressMap.set(this.makeKey(coords), address);
+  }
+
+  setSimulatedError(error: Error | null): void {
+    this.simulatedError = error;
+  }
+
+  setUnconfigured(unconfigured = true): void {
+    this.isUnconfigured = unconfigured;
+  }
+
+  async reverseGeocode(coordinates: Coordinates): Promise<string> {
+    this.calls.push(coordinates);
+
+    if (this.isUnconfigured) {
+      throw new AppError(
+        503,
+        'GEOCODING_UNAVAILABLE',
+        'Google Maps geocoding capability is not configured or unavailable',
+      );
+    }
+
+    if (this.simulatedError) {
+      throw this.simulatedError;
+    }
+
+    const key = this.makeKey(coordinates);
+    if (this.addressMap.has(key)) {
+      return this.addressMap.get(key)!;
+    }
+
+    return this.defaultAddress;
   }
 
   get callCount(): number {

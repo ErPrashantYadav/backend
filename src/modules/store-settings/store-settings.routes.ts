@@ -61,6 +61,20 @@ const updateSettingsSchema = z.object({
   announcementStartDate: z.string().nullable().optional(),
   announcementEndDate: z.string().nullable().optional(),
   timezone: z.string().trim().optional(),
+  storeOriginLatitude: z.number().min(-90).max(90).nullable().optional(),
+  storeOriginLongitude: z.number().min(-180).max(180).nullable().optional(),
+  deliveryFeeMode: z.enum(['FIXED', 'PER_KM', 'TIERED']).optional(),
+  deliveryFeeBaseAmount: z.union([z.number().min(0), z.string()]).optional(),
+  deliveryFeePerKmAmount: z.union([z.number().min(0), z.string()]).optional(),
+  deliveryFeeFreeThreshold: z
+    .union([z.number().min(0), z.string()])
+    .nullable()
+    .optional(),
+  hasExplicitDeliveryFeeFreeThreshold: z.boolean().optional(),
+  deliveryMaxDistanceKm: z.union([z.number().gt(0), z.string()]).optional(),
+  deliveryFallbackAmount: z.union([z.number().min(0), z.string()]).optional(),
+  isOrderingEnabled: z.boolean().optional(),
+  orderingMessage: z.string().trim().max(500).nullable().optional(),
 });
 
 export function createPublicStoreSettingsRouter(

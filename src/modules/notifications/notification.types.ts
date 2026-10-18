@@ -34,11 +34,19 @@ export interface EnqueueNotificationInput {
   maxAttempts?: number;
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer | string;
+  contentType?: string;
+}
+
 export interface EmailInput {
   to: string;
+  from?: string;
   subject: string;
   text: string;
   html?: string;
+  attachments?: EmailAttachment[];
 }
 
 export interface EmailProvider {

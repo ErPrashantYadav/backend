@@ -1,8 +1,12 @@
 import crypto from 'node:crypto';
 import type { Logger } from 'pino';
+import type { AppConfig } from '../../config/env';
 import { AppError } from '../../errors/app-error';
 import type { AuditService } from '../audit/audit.service';
-import type { CheckoutRepository } from '../checkout/checkout.types';
+import type {
+  CheckoutRepository,
+  OrderSnapshot,
+} from '../checkout/checkout.types';
 import type { PaymentMethodRepository } from '../payment-method/payment-method.types';
 import type {
   PaginatedPaymentSubmissions,
@@ -14,6 +18,83 @@ import type {
   SubmitPaymentProofInput,
 } from './payment-submission.types';
 
+export function isValidPaymentProofUrl(
+  url: string,
+  cloudName?: string,
+  paymentProofFolder?: string,
+  environment?: string,
+): boolean {
+  const trimmed = url.trim();
+  if (/^(assets\/|qr-proofs\/)[a-zA-Z0-9_\-\./]+$/i.test(trimmed)) {
+    return true;
+  }
+
+  const isTestEnv = (environment ?? process.env.NODE_ENV) === 'test';
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    // Allow configured test domains strictly in isolated test environments
+    if (
+      isTestEnv &&
+      (parsed.hostname === 'images.liquorshop.test' ||
+        parsed.hostname === 'storage.test')
+    ) {
+      return true;
+    }
+
+    // Cloudinary domain check
+    if (parsed.hostname === 'res.cloudinary.com') {
+      const configuredCloud = cloudName?.trim();
+      // Fail closed: Cloudinary URL cannot be validated without an explicit configured cloud
+      if (!configuredCloud) {
+        return false;
+      }
+
+      // First path segment in Cloudinary is the cloud account name:
+      // https://res.cloudinary.com/<cloud_name>/image/upload/...
+      const segments = parsed.pathname.split('/').filter(Boolean);
+      const urlCloud = segments[0];
+
+      if (!urlCloud) {
+        return false;
+      }
+
+      // In production or when cloud names differ, mock-cloud is forbidden.
+      // mock-cloud is strictly permitted only in isolated automated test environments.
+      const isAllowedCloud =
+        urlCloud === configuredCloud ||
+        (isTestEnv && urlCloud === 'mock-cloud');
+
+      if (!isAllowedCloud) {
+        return false;
+      }
+
+      const folder = (
+        paymentProofFolder || 'liquor_shop/payment_proofs'
+      ).trim();
+      const cleanFolder = folder.replace(/^\/+|\/+$/g, '');
+      if (!cleanFolder) {
+        return false;
+      }
+
+      // Dedicated payment-proof folder validation
+      if (!parsed.pathname.includes(`/${cleanFolder}/`)) {
+        return false;
+      }
+
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export class PaymentSubmissionService {
   constructor(
     private readonly paymentSubmissionRepository: PaymentSubmissionRepository,
@@ -21,12 +102,14 @@ export class PaymentSubmissionService {
     private readonly paymentMethodRepository: PaymentMethodRepository,
     private readonly logger?: Logger,
     private readonly auditService?: AuditService,
+    private readonly config?: AppConfig,
   ) {}
 
-  async submitPaymentProof(
-    input: SubmitPaymentProofInput,
-  ): Promise<PublicPaymentProofResponse> {
-    if (!input.orderLookupToken || !input.orderLookupToken.trim()) {
+  async verifyOrderForProofSubmission(
+    orderNumber: string,
+    orderLookupToken?: string,
+  ): Promise<OrderSnapshot> {
+    if (!orderLookupToken || !orderLookupToken.trim()) {
       throw new AppError(
         404,
         'ORDER_NOT_FOUND',
@@ -34,9 +117,7 @@ export class PaymentSubmissionService {
       );
     }
 
-    const order = await this.checkoutRepository.findOrderByNumber(
-      input.orderNumber,
-    );
+    const order = await this.checkoutRepository.findOrderByNumber(orderNumber);
     if (!order) {
       throw new AppError(
         404,
@@ -48,7 +129,7 @@ export class PaymentSubmissionService {
     // Verify lookup token with timing-safe SHA-256 hash comparison
     const providedHash = crypto
       .createHash('sha256')
-      .update(input.orderLookupToken.trim())
+      .update(orderLookupToken.trim())
       .digest('hex');
 
     const a = Buffer.from(providedHash, 'utf8');
@@ -134,15 +215,31 @@ export class PaymentSubmissionService {
       );
     }
 
-    // Validate image URL (strictly HTTPS or internal asset reference)
+    return order;
+  }
+
+  async submitPaymentProof(
+    input: SubmitPaymentProofInput,
+  ): Promise<PublicPaymentProofResponse> {
+    const order = await this.verifyOrderForProofSubmission(
+      input.orderNumber,
+      input.orderLookupToken,
+    );
+
+    // Validate image URL belongs to Cloudinary payment proofs folder or trusted storage
     const url = input.proofImageUrl.trim();
-    const isHttps = /^https:\/\/[^\s$.?#].[^\s]*$/i.test(url);
-    const isAsset = /^(assets\/|qr-proofs\/)[a-zA-Z0-9_\-\./]+$/i.test(url);
-    if (!isHttps && !isAsset) {
+    if (
+      !isValidPaymentProofUrl(
+        url,
+        this.config?.CLOUDINARY_CLOUD_NAME,
+        this.config?.CLOUDINARY_PAYMENT_PROOF_FOLDER,
+        this.config?.NODE_ENV,
+      )
+    ) {
       throw new AppError(
         400,
         'INVALID_IMAGE_URL',
-        'Proof image must be a secure HTTPS URL or configured asset reference',
+        'Proof image must belong to the configured store payment proofs storage or valid asset reference',
       );
     }
 

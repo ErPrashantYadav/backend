@@ -285,6 +285,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9841112233',
             email: 'bibek@example.com',
             deliveryAddress: 'New Baneshwor, Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);
@@ -327,6 +328,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9841112233',
             email: 'test@example.com',
             deliveryAddress: 'Thamel, Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);
@@ -350,6 +352,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9849998877',
             email: 'aayush@example.com',
             deliveryAddress: 'Sanepa, Lalitpur',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);
@@ -437,6 +440,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9840000000',
             email: 'cancelled@example.com',
             deliveryAddress: 'Baluwatar, Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);
@@ -472,6 +476,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9849991111',
             email: null, // No email provided
             deliveryAddress: 'Patan, Lalitpur',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);
@@ -505,6 +510,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
           phone: '+977-9842223344',
           email: 'buyer@example.com',
           deliveryAddress: 'Naxal, Kathmandu',
+          coordinates: { latitude: 27.7172, longitude: 85.324 },
         },
       };
 
@@ -540,6 +546,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9843334455',
             email: 'dedup@example.com',
             deliveryAddress: 'Maitighar, Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);
@@ -584,6 +591,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9845556677',
             email: 'worker@example.com',
             deliveryAddress: 'Thamel, Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);
@@ -630,6 +638,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9846667788',
             email: 'retry@example.com',
             deliveryAddress: 'Dillibazar, Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);
@@ -687,6 +696,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9847778899',
             email: 'exhaust@example.com',
             deliveryAddress: 'Baneshwor, Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);
@@ -797,6 +807,7 @@ describe('Task 23: Reliable Email & WhatsApp Notifications', () => {
             phone: '+977-9840001122',
             email: 'secret@example.com',
             deliveryAddress: 'Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
         })
         .expect(201);

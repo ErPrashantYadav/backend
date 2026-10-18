@@ -598,6 +598,7 @@ describe('Promo Codes & Discount Management', () => {
             phone: '+977-9841234567',
             deliveryAddress: 'Thamel Marg, Kathmandu',
             email: 'pramod@test.com',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
           promoCode: 'DRINK10',
         });
@@ -651,6 +652,7 @@ describe('Promo Codes & Discount Management', () => {
             name: 'First Guest',
             phone: '+977-9841111111',
             deliveryAddress: 'Baluwatar, Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
           promoCode: 'ONETIME',
         });
@@ -666,6 +668,7 @@ describe('Promo Codes & Discount Management', () => {
             name: 'Second Guest',
             phone: '+977-9842222222',
             deliveryAddress: 'Lalitpur, Patan',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
           promoCode: 'ONETIME',
         });
@@ -694,6 +697,7 @@ describe('Promo Codes & Discount Management', () => {
           name: 'Repeat Buyer',
           phone: '+977-9849999999',
           deliveryAddress: 'New Road, Kathmandu',
+          coordinates: { latitude: 27.7172, longitude: 85.324 },
         },
         promoCode: 'IDEMP100',
         idempotencyKey,
@@ -734,6 +738,7 @@ describe('Promo Codes & Discount Management', () => {
             name: 'Sneaky Client',
             phone: '+977-9848888888',
             deliveryAddress: 'Lazimpat, Kathmandu',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
           promoCode: 'REAL100',
           discountTotal: '2000.00', // Forged field!
@@ -768,6 +773,7 @@ describe('Promo Codes & Discount Management', () => {
           name: 'Conflict User',
           phone: '+977-9840000000',
           deliveryAddress: 'Thamel, Kathmandu',
+          coordinates: { latitude: 27.7172, longitude: 85.324 },
         },
         idempotencyKey,
       };

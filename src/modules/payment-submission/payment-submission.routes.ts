@@ -1,5 +1,6 @@
 import { Router, type RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
 import { z } from 'zod';
 import { AppError } from '../../errors/app-error';
 import {
@@ -10,6 +11,8 @@ import { validateBody } from '../../middleware/validate';
 import { successResponse } from '../../utils/response';
 import type { AdminAuthService } from '../auth/auth.service';
 import { extractOrderLookupToken } from '../checkout/checkout.routes';
+import type { CloudinaryService } from '../media/cloudinary.service';
+import { validateImageBuffer } from '../media/image-validator';
 import type { PaymentSubmissionService } from './payment-submission.service';
 import type { PaymentSubmissionStatus } from './payment-submission.types';
 
@@ -24,8 +27,45 @@ function asyncHandler(
   };
 }
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB max
+  },
+});
+
+function handleOptionalMulterUpload(
+  multerMiddleware: RequestHandler,
+): RequestHandler {
+  return (request, response, next) => {
+    const contentType = request.headers['content-type'] || '';
+    if (contentType.includes('multipart/form-data')) {
+      multerMiddleware(request, response, (err) => {
+        if (err) {
+          if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+              return next(
+                new AppError(
+                  400,
+                  'FILE_TOO_LARGE',
+                  'Payment proof screenshot exceeds 5 MB size limit',
+                ),
+              );
+            }
+            return next(new AppError(400, 'UPLOAD_ERROR', err.message));
+          }
+          return next(err);
+        }
+        next();
+      });
+    } else {
+      next();
+    }
+  };
+}
+
 const submitProofSchema = z.object({
-  proofImageUrl: z.string().trim().min(5).max(2048),
+  proofImageUrl: z.string().trim().min(5).max(2048).optional(),
   transactionReference: z.string().trim().max(120).optional().nullable(),
   customerNotes: z.string().trim().max(500).optional().nullable(),
   orderLookupToken: z.string().trim().optional(),
@@ -53,6 +93,8 @@ const reviewSchema = z.discriminatedUnion('action', [
 
 export function createPublicPaymentSubmissionRouter(
   service: PaymentSubmissionService,
+  cloudinaryService?:
+    CloudinaryService | (() => CloudinaryService | undefined | null),
 ): Router {
   const router = Router();
 
@@ -75,19 +117,73 @@ export function createPublicPaymentSubmissionRouter(
   router.post(
     '/:orderNumber/payment-proof',
     submissionRateLimiter,
+    handleOptionalMulterUpload(upload.single('file')),
     validateBody(submitProofSchema),
     asyncHandler(async (request, response) => {
       const orderNumber = z.string().min(1).parse(request.params.orderNumber);
       const token =
         extractOrderLookupToken(request) ||
-        (request.body.orderLookupToken as string | undefined);
+        (request.body?.orderLookupToken as string | undefined);
+
+      if (!token || !token.trim()) {
+        throw new AppError(
+          404,
+          'ORDER_NOT_FOUND',
+          'Order not found or invalid lookup token',
+        );
+      }
+
+      // Guest order verification before accepting or uploading any proof
+      await service.verifyOrderForProofSubmission(orderNumber, token);
+
+      let proofImageUrl = (
+        request.body?.proofImageUrl as string | undefined
+      )?.trim();
+
+      if (request.file) {
+        validateImageBuffer(
+          request.file.buffer,
+          request.file.mimetype,
+          'PAYMENT_PROOF',
+        );
+
+        const cloudinary =
+          typeof cloudinaryService === 'function'
+            ? cloudinaryService()
+            : cloudinaryService;
+
+        if (!cloudinary) {
+          throw new AppError(
+            500,
+            'CLOUDINARY_CONFIG_MISSING',
+            'Image upload service is not configured',
+          );
+        }
+
+        const uploadResult = await cloudinary.upload({
+          buffer: request.file.buffer,
+          mimeType: request.file.mimetype,
+          purpose: 'PAYMENT_PROOF',
+          originalFilename: request.file.originalname,
+        });
+
+        proofImageUrl = uploadResult.secureUrl;
+      }
+
+      if (!proofImageUrl) {
+        throw new AppError(
+          400,
+          'VALIDATION_ERROR',
+          'Either a proof image file or proofImageUrl must be provided',
+        );
+      }
 
       const result = await service.submitPaymentProof({
         orderNumber,
-        orderLookupToken: token ?? '',
-        proofImageUrl: request.body.proofImageUrl,
-        transactionReference: request.body.transactionReference,
-        customerNotes: request.body.customerNotes,
+        orderLookupToken: token,
+        proofImageUrl,
+        transactionReference: request.body?.transactionReference,
+        customerNotes: request.body?.customerNotes,
       });
 
       response

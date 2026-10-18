@@ -76,6 +76,7 @@ export class RoutingService {
   async calculateRoute(
     origin: Coordinates,
     destination: Coordinates,
+    overrideMaxDistanceKm?: number,
   ): Promise<RouteResult> {
     this.validateCoordinates(origin, 'Origin');
     this.validateCoordinates(destination, 'Destination');
@@ -103,12 +104,17 @@ export class RoutingService {
     const distanceMeters = Math.max(0, Math.round(raw.distanceMeters));
     const durationSeconds = Math.max(0, Math.round(raw.durationSeconds));
 
-    if (this.maxDistanceKm > 0 && distanceMeters > this.maxDistanceKm * 1000) {
+    const effectiveMaxKm =
+      overrideMaxDistanceKm !== undefined
+        ? overrideMaxDistanceKm
+        : this.maxDistanceKm;
+
+    if (effectiveMaxKm > 0 && distanceMeters > effectiveMaxKm * 1000) {
       const distanceKm = (distanceMeters / 1000).toFixed(1);
       throw new AppError(
         400,
         'MAX_DISTANCE_EXCEEDED',
-        `Delivery distance (${distanceKm} km) exceeds maximum serviceable limit of ${this.maxDistanceKm} km`,
+        `Delivery distance (${distanceKm} km) exceeds maximum serviceable limit of ${effectiveMaxKm} km`,
       );
     }
 
@@ -118,7 +124,15 @@ export class RoutingService {
     };
   }
 
-  async getRouteToDestination(destination: Coordinates): Promise<RouteResult> {
-    return this.calculateRoute(this.storeOrigin, destination);
+  async getRouteToDestination(
+    destination: Coordinates,
+    overrideOrigin?: Coordinates,
+    overrideMaxDistanceKm?: number,
+  ): Promise<RouteResult> {
+    return this.calculateRoute(
+      overrideOrigin ?? this.storeOrigin,
+      destination,
+      overrideMaxDistanceKm,
+    );
   }
 }

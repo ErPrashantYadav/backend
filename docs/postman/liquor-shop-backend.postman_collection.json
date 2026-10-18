@@ -145,9 +145,164 @@
               }
             ],
             "url": {
+              "raw": "{{baseUrl}}/api/admin/users?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.items && json.data.items.length > 0 && !pm.environment.get(\"adminUserId\")) {",
+                  "  pm.environment.set(\"adminUserId\", json.data.items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Admin User (POST /api/admin/users)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"staff-1791998644674@liquor.test\",\n  \"name\": \"Operations Staff\",\n  \"password\": \"StaffSecretPass123!Secure\",\n  \"roleId\": \"{{roleId}}\"\n}"
+            },
+            "url": {
               "raw": "{{baseUrl}}/api/admin/users",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "users"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201 or 400\", () => pm.expect([201, 400]).to.include(pm.response.code));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set(\"adminUserId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Admin User by ID (GET /api/admin/users/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "{{adminUserId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Admin User (PATCH /api/admin/users/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Operations Staff Senior\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "{{adminUserId}}"]
+            }
+          }
+        },
+        {
+          "name": "Set Admin User Active Status (PATCH /api/admin/users/:id/status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "{{adminUserId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Set Admin User Password (PATCH /api/admin/users/:id/password)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"UpdatedSecurePassword123!456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{adminUserId}}/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "{{adminUserId}}", "password"]
             }
           }
         },
@@ -166,6 +321,101 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "roles"]
             }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.length > 0 && !pm.environment.get(\"roleId\")) {",
+                  "  pm.environment.set(\"roleId\", json.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Role (POST /api/admin/roles)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Store Supervisor 1791998644674\",\n  \"description\": \"Manages catalog inventory and orders\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "roles"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set(\"roleId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Role by ID (GET /api/admin/roles/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "roles", "{{roleId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Role (PATCH /api/admin/roles/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated supervisor role permissions description\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "roles", "{{roleId}}"]
+            }
           }
         },
         {
@@ -182,6 +432,70 @@
               "raw": "{{baseUrl}}/api/admin/permissions",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "permissions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.length > 0) {",
+                  "  pm.environment.set(\"permissionKey\", json.data[0].key);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replace Role Permissions (PUT /api/admin/roles/:id/permissions)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissionKeys\": [\n    \"catalog.categories.read\",\n    \"catalog.brands.read\",\n    \"orders.read\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles/{{roleId}}/permissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "roles", "{{roleId}}", "permissions"]
+            }
+          }
+        },
+        {
+          "name": "Remove Single Role Permission (DELETE /api/admin/roles/:id/permissions/:permissionKey)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles/{{roleId}}/permissions/{{permissionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "roles",
+                "{{roleId}}",
+                "permissions",
+                "{{permissionKey}}"
+              ]
             }
           }
         }
@@ -234,7 +548,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Single Malt Whisky\",\n  \"slug\": \"single-malt-whisky-1791780596755\",\n  \"description\": \"Single malt scotch and world whiskies\",\n  \"isActive\": true,\n  \"displayOrder\": 1\n}"
+              "raw": "{\n  \"name\": \"Single Malt Whisky\",\n  \"slug\": \"single-malt-whisky-1791998644674\",\n  \"description\": \"Single malt scotch and world whiskies\",\n  \"isActive\": true,\n  \"displayOrder\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/categories",
@@ -255,6 +569,65 @@
               }
             }
           ]
+        },
+        {
+          "name": "Admin Get Category by ID (GET /api/admin/categories/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "categories", "{{categoryId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Category (PATCH /api/admin/categories/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Premium curated single malt scotch selection\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "categories", "{{categoryId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Delete Category (DELETE /api/admin/categories/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "categories", "{{categoryId}}"]
+            }
+          }
         }
       ]
     },
@@ -269,6 +642,23 @@
               "raw": "{{baseUrl}}/api/catalog/brands",
               "host": ["{{baseUrl}}"],
               "path": ["api", "catalog", "brands"]
+            }
+          }
+        },
+        {
+          "name": "Admin List Brands (GET /api/admin/brands)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/brands",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "brands"]
             }
           }
         },
@@ -288,7 +678,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"The Macallan\",\n  \"slug\": \"the-macallan-1791780596755\",\n  \"isActive\": true,\n  \"displayOrder\": 1\n}"
+              "raw": "{\n  \"name\": \"The Macallan\",\n  \"slug\": \"the-macallan-1791998644674\",\n  \"isActive\": true,\n  \"displayOrder\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/brands",
@@ -309,6 +699,48 @@
               }
             }
           ]
+        },
+        {
+          "name": "Admin Get Brand by ID (GET /api/admin/brands/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/brands/{{brandId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "brands", "{{brandId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Brand (PATCH /api/admin/brands/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Speyside single malt scotch whisky distillery\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/brands/{{brandId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "brands", "{{brandId}}"]
+            }
+          }
         },
         {
           "name": "Admin Reorder Brands (PUT /api/admin/brands/reorder)",
@@ -345,6 +777,23 @@
               }
             }
           ]
+        },
+        {
+          "name": "Admin Delete Brand (DELETE /api/admin/brands/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/brands/{{brandId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "brands", "{{brandId}}"]
+            }
+          }
         }
       ]
     },
@@ -359,6 +808,34 @@
               "raw": "{{baseUrl}}/api/catalog/products",
               "host": ["{{baseUrl}}"],
               "path": ["api", "catalog", "products"]
+            }
+          }
+        },
+        {
+          "name": "Public Get Product by ID or Slug (GET /api/catalog/products/:id)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/catalog/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "catalog", "products", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin List Products (GET /api/admin/products)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "products"]
             }
           }
         },
@@ -378,7 +855,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Macallan 12 Year Double Cask\",\n  \"slug\": \"macallan-12-double-cask-1791780596755\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"brandId\": \"{{brandId}}\",\n  \"discountType\": \"PERCENTAGE\",\n  \"discountValue\": \"10.00\",\n  \"isActive\": true\n}"
+              "raw": "{\n  \"name\": \"Macallan 12 Year Double Cask\",\n  \"slug\": \"macallan-12-double-cask-1791998644674\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"brandId\": \"{{brandId}}\",\n  \"discountType\": \"PERCENTAGE\",\n  \"discountValue\": \"10.00\",\n  \"isActive\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/products",
@@ -401,6 +878,48 @@
           ]
         },
         {
+          "name": "Admin Get Product by ID (GET /api/admin/products/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "products", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Product (PATCH /api/admin/products/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Aged in American and European sherry oak casks\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "products", "{{productId}}"]
+            }
+          }
+        },
+        {
           "name": "Admin Create Variant (POST /api/admin/products/:id/variants)",
           "request": {
             "method": "POST",
@@ -416,7 +935,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sku\": \"MAC-12-750ML-752\",\n  \"size\": \"750 ml\",\n  \"purchasePrice\": 12000,\n  \"sellingPrice\": 15500,\n  \"stock\": 50,\n  \"lowStockThreshold\": 5,\n  \"isActive\": true\n}"
+              "raw": "{\n  \"sku\": \"MAC-12-750ML-695\",\n  \"size\": \"750 ml\",\n  \"purchasePrice\": 12000,\n  \"sellingPrice\": 15500,\n  \"stock\": 50,\n  \"lowStockThreshold\": 5,\n  \"isActive\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/admin/products/{{productId}}/variants",
@@ -437,6 +956,231 @@
               }
             }
           ]
+        },
+        {
+          "name": "Admin List Product Variants (GET /api/admin/products/:id/variants)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}/variants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "products", "{{productId}}", "variants"]
+            }
+          }
+        },
+        {
+          "name": "Admin Get Single Variant (GET /api/admin/products/:id/variants/:variantId)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}/variants/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "products",
+                "{{productId}}",
+                "variants",
+                "{{variantId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Variant (PATCH /api/admin/products/:id/variants/:variantId)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sellingPrice\": 15900,\n  \"lowStockThreshold\": 8\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}/variants/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "products",
+                "{{productId}}",
+                "variants",
+                "{{variantId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin List Product Images (GET /api/admin/products/:id/images)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}/images",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "products", "{{productId}}", "images"]
+            }
+          }
+        },
+        {
+          "name": "Admin Create Product Image (POST /api/admin/products/:id/images)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"imageUrl\": \"https://res.cloudinary.com/demo/image/upload/sample_bottle.jpg\",\n  \"publicId\": \"liquor_shop/products/sample_bottle\",\n  \"altText\": \"Macallan 12 Double Cask Front View\",\n  \"sortOrder\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}/images",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "products", "{{productId}}", "images"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set(\"imageId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Update Product Image (PATCH /api/admin/products/:id/images/:imageId)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"altText\": \"Macallan 12 Double Cask Premium Gift Box\",\n  \"sortOrder\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}/images/{{imageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "products",
+                "{{productId}}",
+                "images",
+                "{{imageId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Delete Product Image (DELETE /api/admin/products/:id/images/:imageId)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}/images/{{imageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "products",
+                "{{productId}}",
+                "images",
+                "{{imageId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Deactivate Variant (DELETE /api/admin/products/:id/variants/:variantId)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}/variants/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "products",
+                "{{productId}}",
+                "variants",
+                "{{variantId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Deactivate Product (DELETE /api/admin/products/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "products", "{{productId}}"]
+            }
+          }
         }
       ]
     },
@@ -501,6 +1245,62 @@
               "path": ["api", "admin", "inventory", "low-stock"]
             }
           }
+        },
+        {
+          "name": "Adjust Variant Stock (POST /api/admin/inventory/variants/:variantId/adjustments)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantityDelta\": 20,\n  \"type\": \"RESTOCK\",\n  \"reason\": \"Stock shipment received for variant\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/variants/{{variantId}}/adjustments",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "inventory",
+                "variants",
+                "{{variantId}}",
+                "adjustments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Variant Stock Level (GET /api/admin/inventory/variants/:variantId/stock)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/variants/{{variantId}}/stock",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "inventory",
+                "variants",
+                "{{variantId}}",
+                "stock"
+              ]
+            }
+          }
         }
       ]
     },
@@ -557,7 +1357,32 @@
           }
         },
         {
-          "name": "3. Execute Checkout (POST /api/checkout)",
+          "name": "3. Update Cart Item Quantity (PATCH /api/cart/items/:variantId)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Cart-Id",
+                "value": "{{cartToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/cart/items/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cart", "items", "{{variantId}}"]
+            }
+          }
+        },
+        {
+          "name": "4. Execute Checkout (POST /api/checkout)",
           "request": {
             "method": "POST",
             "header": [
@@ -572,7 +1397,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customer\": {\n    \"name\": \"Prakash Sharma\",\n    \"phone\": \"+977-9841234567\",\n    \"deliveryAddress\": \"House 12, Thamel, Kathmandu\",\n    \"email\": \"prakash@example.test\"\n  },\n  \"paymentMethodCode\": \"CASH_ON_DELIVERY\"\n}"
+              "raw": "{\n  \"customer\": {\n    \"name\": \"Prakash Sharma\",\n    \"phone\": \"+977-9841234567\",\n    \"deliveryAddress\": \"House 12, Thamel, Kathmandu\",\n    \"email\": \"prakash@example.test\",\n    \"coordinates\": {\n      \"latitude\": 27.7172,\n      \"longitude\": 85.324\n    }\n  },\n  \"paymentMethodCode\": \"CASH_ON_DELIVERY\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/checkout",
@@ -598,7 +1423,7 @@
           ]
         },
         {
-          "name": "4. Public Order Lookup (GET /api/orders/:orderNumber)",
+          "name": "5. Public Order Lookup (GET /api/orders/:orderNumber)",
           "request": {
             "method": "GET",
             "header": [
@@ -624,6 +1449,40 @@
               }
             }
           ]
+        },
+        {
+          "name": "6. Remove Single Cart Item (DELETE /api/cart/items/:variantId)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Cart-Id",
+                "value": "{{cartToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cart/items/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cart", "items", "{{variantId}}"]
+            }
+          }
+        },
+        {
+          "name": "7. Clear Entire Cart (DELETE /api/cart)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Cart-Id",
+                "value": "{{cartToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cart"]
+            }
+          }
         }
       ]
     },
@@ -638,6 +1497,149 @@
               "raw": "{{baseUrl}}/api/payment-methods",
               "host": ["{{baseUrl}}"],
               "path": ["api", "payment-methods"]
+            }
+          }
+        },
+        {
+          "name": "Admin List Payment Methods (GET /api/admin/payment-methods)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payment-methods"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.length > 0 && !pm.environment.get(\"paymentMethodId\")) {",
+                  "  pm.environment.set(\"paymentMethodId\", json.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Create Payment Method (POST /api/admin/payment-methods)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"FONEPAY_QR_1791998644674\",\n  \"type\": \"STATIC_QR\",\n  \"name\": \"FonePay QR Payment\",\n  \"description\": \"Scan and pay using any Nepali mobile banking app\",\n  \"providerLabel\": \"FonePay\",\n  \"accountName\": \"Old Liquor Store Pvt Ltd\",\n  \"accountNumber\": \"01234567890123\",\n  \"qrImageUrl\": \"https://res.cloudinary.com/demo/image/upload/sample_qr.png\",\n  \"instructions\": \"Scan QR and enter Order Number in remarks\",\n  \"displayOrder\": 2,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payment-methods"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set(\"paymentMethodId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Get Payment Method by ID (GET /api/admin/payment-methods/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payment-methods/{{paymentMethodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payment-methods", "{{paymentMethodId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Payment Method (PATCH /api/admin/payment-methods/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instructions\": \"Scan QR code and upload screenshot payment proof slip below\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payment-methods/{{paymentMethodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payment-methods", "{{paymentMethodId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Set Payment Method Status (PATCH /api/admin/payment-methods/:id/status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payment-methods/{{paymentMethodId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "payment-methods",
+                "{{paymentMethodId}}",
+                "status"
+              ]
             }
           }
         },
@@ -676,6 +1678,55 @@
           ]
         },
         {
+          "name": "Submit Payment Proof via Multipart Upload (POST /api/orders/:orderNumber/payment-proof)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Order-Lookup-Token",
+                "value": "{{orderLookupToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "receipt_sample.png",
+                  "description": "Screenshot receipt (JPEG, PNG, WebP up to 5MB)"
+                },
+                {
+                  "key": "transactionReference",
+                  "value": "FPAY-TX-123456",
+                  "type": "text"
+                },
+                {
+                  "key": "customerNotes",
+                  "value": "Payment transferred via Mobile Banking",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderNumber}}/payment-proof",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderNumber}}", "payment-proof"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Admin List Payment Submissions (GET /api/admin/payment-submissions)",
           "request": {
             "method": "GET",
@@ -689,6 +1740,28 @@
               "raw": "{{baseUrl}}/api/admin/payment-submissions",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "payment-submissions"]
+            }
+          }
+        },
+        {
+          "name": "Admin Get Payment Submission by ID (GET /api/admin/payment-submissions/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payment-submissions/{{paymentSubmissionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "payment-submissions",
+                "{{paymentSubmissionId}}"
+              ]
             }
           }
         },
@@ -725,6 +1798,68 @@
               }
             }
           ]
+        },
+        {
+          "name": "Admin Reject Payment Submission (POST /api/admin/payment-submissions/:id/reject)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Transaction reference does not match merchant statement\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payment-submissions/{{paymentSubmissionId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "payment-submissions",
+                "{{paymentSubmissionId}}",
+                "reject"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Unified Review Payment Submission (POST /api/admin/payment-submissions/:id/review)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"APPROVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payment-submissions/{{paymentSubmissionId}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "payment-submissions",
+                "{{paymentSubmissionId}}",
+                "review"
+              ]
+            }
+          }
         }
       ]
     },
@@ -745,6 +1880,40 @@
               "raw": "{{baseUrl}}/api/admin/orders",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Order by ID (GET /api/admin/orders/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/orders/{{orderNumber}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "orders", "{{orderNumber}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Order Status History (GET /api/admin/orders/:id/history)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/orders/{{orderNumber}}/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "orders", "{{orderNumber}}", "history"]
             }
           }
         },
@@ -772,6 +1941,37 @@
               "path": ["api", "admin", "orders", "{{orderNumber}}", "status"]
             }
           }
+        },
+        {
+          "name": "Download Order Tax Invoice (GET /api/admin/orders/:id/invoice)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/orders/{{orderNumber}}/invoice",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "orders", "{{orderNumber}}", "invoice"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is application/pdf\", () => {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -819,6 +2019,23 @@
           }
         },
         {
+          "name": "Order Status Breakdown (GET /api/admin/dashboard/order-status-breakdown)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard/order-status-breakdown",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "dashboard", "order-status-breakdown"]
+            }
+          }
+        },
+        {
           "name": "Best Selling Products (GET /api/admin/dashboard/top-products)",
           "request": {
             "method": "GET",
@@ -832,6 +2049,23 @@
               "raw": "{{baseUrl}}/api/admin/dashboard/top-products",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "dashboard", "top-products"]
+            }
+          }
+        },
+        {
+          "name": "Dashboard Low Stock Summary (GET /api/admin/dashboard/low-stock)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard/low-stock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "dashboard", "low-stock"]
             }
           }
         }
@@ -851,9 +2085,78 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/admin/customers",
+              "raw": "{{baseUrl}}/api/admin/customers?page=1&limit=20",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "admin", "customers"]
+              "path": ["api", "admin", "customers"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.items && json.data.items.length > 0) {",
+                  "  pm.environment.set(\"customerId\", json.data.items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Customer by ID (GET /api/admin/customers/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "customers", "{{customerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Customer Order History (GET /api/admin/customers/:id/orders)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/customers/{{customerId}}/orders?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "customers", "{{customerId}}", "orders"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
             }
           }
         }
@@ -870,6 +2173,23 @@
               "raw": "{{baseUrl}}/api/banners",
               "host": ["{{baseUrl}}"],
               "path": ["api", "banners"]
+            }
+          }
+        },
+        {
+          "name": "Admin List Banners (GET /api/admin/banners)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/banners",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "banners"]
             }
           }
         },
@@ -912,6 +2232,73 @@
           ]
         },
         {
+          "name": "Admin Get Banner by ID (GET /api/admin/banners/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/banners/{{bannerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "banners", "{{bannerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Banner (PATCH /api/admin/banners/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Holiday Spirits Flash Sale\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/banners/{{bannerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "banners", "{{bannerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Set Banner Status (PATCH /api/admin/banners/:id/status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/banners/{{bannerId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "banners", "{{bannerId}}", "status"]
+            }
+          }
+        },
+        {
           "name": "Admin Reorder Banners (PUT /api/admin/banners/reorder)",
           "request": {
             "method": "PUT",
@@ -946,6 +2333,23 @@
               }
             }
           ]
+        },
+        {
+          "name": "Admin Delete Banner (DELETE /api/admin/banners/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/banners/{{bannerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "banners", "{{bannerId}}"]
+            }
+          }
         }
       ]
     },
@@ -960,6 +2364,145 @@
               "raw": "{{baseUrl}}/api/gallery",
               "host": ["{{baseUrl}}"],
               "path": ["api", "gallery"]
+            }
+          }
+        },
+        {
+          "name": "Admin List Gallery (GET /api/admin/gallery)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/gallery",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "gallery"]
+            }
+          }
+        },
+        {
+          "name": "Admin Create Gallery Item (POST /api/admin/gallery)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Wine Cellar Collection\",\n  \"description\": \"Premium cellar reserve collection showroom\",\n  \"imageUrl\": \"https://res.cloudinary.com/demo/image/upload/sample_gallery.jpg\",\n  \"category\": \"CELLAR\",\n  \"displayOrder\": 1,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/gallery",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "gallery"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set(\"galleryId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Get Gallery Item by ID (GET /api/admin/gallery/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/gallery/{{galleryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "gallery", "{{galleryId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Gallery Item (PATCH /api/admin/gallery/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Vintage Reserve Wine Cellar\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/gallery/{{galleryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "gallery", "{{galleryId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Set Gallery Item Status (PATCH /api/admin/gallery/:id/status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/gallery/{{galleryId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "gallery", "{{galleryId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Admin Delete Gallery Item (DELETE /api/admin/gallery/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/gallery/{{galleryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "gallery", "{{galleryId}}"]
             }
           }
         }
@@ -995,6 +2538,42 @@
               "path": ["api", "admin", "settings"]
             }
           }
+        },
+        {
+          "name": "Admin Update Store Settings (PATCH /api/admin/settings)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeOriginLatitude\": 27.7172,\n  \"storeOriginLongitude\": 85.324,\n  \"deliveryFeeMode\": \"PER_KM\",\n  \"deliveryFeeBaseAmount\": 100,\n  \"deliveryFeePerKmAmount\": 25,\n  \"deliveryFeeFreeThreshold\": 5000,\n  \"hasExplicitDeliveryFeeFreeThreshold\": true,\n  \"deliveryMaxDistanceKm\": 25,\n  \"deliveryFallbackAmount\": 0,\n  \"isOrderingEnabled\": true,\n  \"orderingMessage\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "settings"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -1020,6 +2599,187 @@
               "raw": "{{baseUrl}}/api/social-media-link",
               "host": ["{{baseUrl}}"],
               "path": ["api", "social-media-link"]
+            }
+          }
+        },
+        {
+          "name": "Public List Profile Handles Grouped (GET /api/social-media/profiles)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/social-media/profiles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "social-media", "profiles"]
+            }
+          }
+        },
+        {
+          "name": "Admin List Social Media (GET /api/admin/social-media)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/social-media",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "social-media"]
+            }
+          }
+        },
+        {
+          "name": "Admin Create Social Media Item (POST /api/admin/social-media)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"instagram\",\n  \"url\": \"https://instagram.com/oldliquorshop\",\n  \"type\": \"profile\",\n  \"label\": \"@oldliquorshop\",\n  \"displayOrder\": 1,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/social-media",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "social-media"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set(\"socialMediaId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Create Batch Social Media (POST /api/admin/social-media/batch)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entries\": [\n    {\n      \"platform\": \"facebook\",\n      \"url\": \"https://facebook.com/oldliquornepal\",\n      \"type\": \"profile\",\n      \"label\": \"Old Liquor Nepal\",\n      \"displayOrder\": 2,\n      \"isActive\": true\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/social-media/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "social-media", "batch"]
+            }
+          }
+        },
+        {
+          "name": "Admin Get Social Media by ID (GET /api/admin/social-media/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/social-media/{{socialMediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "social-media", "{{socialMediaId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Social Media (PATCH /api/admin/social-media/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Official Old Liquor Instagram\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/social-media/{{socialMediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "social-media", "{{socialMediaId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Set Social Media Status (PATCH /api/admin/social-media/:id/status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/social-media/{{socialMediaId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "social-media",
+                "{{socialMediaId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Delete Social Media (DELETE /api/admin/social-media/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/social-media/{{socialMediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "social-media", "{{socialMediaId}}"]
             }
           }
         }
@@ -1057,6 +2817,166 @@
               "raw": "{{baseUrl}}/api/promo-codes/validate",
               "host": ["{{baseUrl}}"],
               "path": ["api", "promo-codes", "validate"]
+            }
+          }
+        },
+        {
+          "name": "Admin List Promo Codes (GET /api/admin/promo-codes)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/promo-codes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "promo-codes"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.length > 0 && !pm.environment.get(\"promoCodeId\")) {",
+                  "  pm.environment.set(\"promoCodeId\", json.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Create Promo Code (POST /api/admin/promo-codes)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"FESTIVE554\",\n  \"description\": \"Festive season promotional discount\",\n  \"discountType\": \"PERCENTAGE\",\n  \"discountValue\": 15,\n  \"minimumOrderAmount\": 1000,\n  \"maxDiscountAmount\": 500,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/promo-codes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "promo-codes"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set(\"promoCodeId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Get Promo Code by ID (GET /api/admin/promo-codes/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/promo-codes/{{promoCodeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "promo-codes", "{{promoCodeId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Promo Code (PATCH /api/admin/promo-codes/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maxDiscountAmount\": 600\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/promo-codes/{{promoCodeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "promo-codes", "{{promoCodeId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Set Promo Code Status (PATCH /api/admin/promo-codes/:id/status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/promo-codes/{{promoCodeId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "promo-codes",
+                "{{promoCodeId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Delete Promo Code (DELETE /api/admin/promo-codes/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/promo-codes/{{promoCodeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "promo-codes", "{{promoCodeId}}"]
             }
           }
         }
@@ -1226,6 +3146,442 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Unauthenticated returns 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "19. Newsletter Subscriptions & Admin Management",
+      "item": [
+        {
+          "name": "1. Public Subscribe to Newsletter (POST /api/newsletter/subscribe)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newsletter.guest@example.test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/newsletter/subscribe",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "newsletter", "subscribe"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set(\"subscriberId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Public Unsubscribe from Newsletter (POST /api/newsletter/unsubscribe)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newsletter.guest@example.test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/newsletter/unsubscribe",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "newsletter", "unsubscribe"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Admin List All Subscribers (GET /api/admin/newsletter/subscribers)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/newsletter/subscribers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "newsletter", "subscribers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.length > 0 && json.data[0].id) {",
+                  "  pm.environment.set(\"subscriberId\", json.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Admin List Active Subscribers (GET /api/admin/newsletter/subscribers/active)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/newsletter/subscribers/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "newsletter", "subscribers", "active"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Admin Delete Subscriber (DELETE /api/admin/newsletter/subscribers/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/newsletter/subscribers/{{subscriberId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "newsletter",
+                "subscribers",
+                "{{subscriberId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "20. Contact Inquiries",
+      "item": [
+        {
+          "name": "Public Submit Contact Inquiry (POST /api/contact)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ram Shrestha\",\n  \"phone\": \"+977-9841112233\",\n  \"email\": \"ram@example.test\",\n  \"subject\": \"Inquiry regarding bulk corporate whisky purchase\",\n  \"message\": \"Hello, do you offer wholesale rates for corporate events of 50+ bottles?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "contact"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set(\"inquiryId\", json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin List Contact Inquiries (GET /api/admin/contact-inquiries)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/contact-inquiries?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "contact-inquiries"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.items && json.data.items.length > 0 && !pm.environment.get(\"inquiryId\")) {",
+                  "  pm.environment.set(\"inquiryId\", json.data.items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Get Contact Inquiry by ID (GET /api/admin/contact-inquiries/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/contact-inquiries/{{inquiryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "contact-inquiries", "{{inquiryId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin Update Inquiry Status (PATCH /api/admin/contact-inquiries/:id/status)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\",\n  \"adminNote\": \"Sales rep assigned to call customer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/contact-inquiries/{{inquiryId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "admin",
+                "contact-inquiries",
+                "{{inquiryId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Delete Contact Inquiry (DELETE /api/admin/contact-inquiries/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/contact-inquiries/{{inquiryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "contact-inquiries", "{{inquiryId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "21. Media Uploads & Reference Safety",
+      "item": [
+        {
+          "name": "Admin Upload Media Asset (POST /api/admin/media/upload)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "product_bottle_sample.png",
+                  "description": "Image binary up to 5 MB"
+                },
+                {
+                  "key": "purpose",
+                  "value": "PRODUCT_IMAGE",
+                  "type": "text",
+                  "description": "PRODUCT_IMAGE, PAYMENT_QR, BANNER_IMAGE, or GALLERY_IMAGE"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/media/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "media", "upload"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201 or 400\", () => pm.expect([201, 400]).to.include(pm.response.code));",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.publicId) pm.environment.set(\"mediaPublicId\", json.data.publicId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Delete Media Asset (DELETE /api/admin/media)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"publicId\": \"{{mediaPublicId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "media"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "22. Audit Logs",
+      "item": [
+        {
+          "name": "Admin List Audit Logs (GET /api/admin/audit-logs)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/audit-logs?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "audit-logs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Audit logs returned with items array\", () => {",
+                  "  var json = pm.response.json();",
+                  "  pm.expect(json.data).to.be.an(\"object\");",
+                  "  pm.expect(json.data.items).to.be.an(\"array\");",
+                  "});"
                 ]
               }
             }

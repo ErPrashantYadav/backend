@@ -47,6 +47,16 @@ export class ResendEmailProvider implements EmailProvider {
       subject: input.subject,
       text: input.text,
       ...(input.html ? { html: input.html } : {}),
+      ...(input.attachments && input.attachments.length > 0
+        ? {
+            attachments: input.attachments.map((a) => ({
+              filename: a.filename,
+              content: Buffer.isBuffer(a.content)
+                ? a.content.toString('base64')
+                : a.content,
+            })),
+          }
+        : {}),
     };
 
     let response: Response;

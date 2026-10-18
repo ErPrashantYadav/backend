@@ -32,6 +32,8 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     STORE_OWNER_WHATSAPP_NUMBER: '+9779801234567',
     EMAIL_PROVIDER: 'TEST',
     EMAIL_FROM: 'Old Liquor Test <orders@liquor-shop.test>',
+    STORE_ORDER_NOTIFICATION_EMAIL: 'admin-orders@liquor-shop.test',
+    STORE_CONTACT_NOTIFICATION_EMAIL: 'admin-contact@liquor-shop.test',
     NOTIFICATION_WORKER_BATCH_SIZE: 10,
     NOTIFICATION_MAX_ATTEMPTS: 5,
     ...overrides,

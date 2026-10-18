@@ -100,4 +100,22 @@ describe('loadConfig', () => {
       }),
     ).toThrow(/STORE_ORIGIN_LONGITUDE/);
   });
+
+  it('supports STORE_ORIGIN_LAT and STORE_ORIGIN_LNG as backward/forward-compatible aliases', () => {
+    const configWithAliases = loadConfig({
+      ...validEnvironment,
+      STORE_ORIGIN_LAT: '27.6710',
+      STORE_ORIGIN_LNG: '85.3210',
+    });
+    expect(configWithAliases.STORE_ORIGIN_LATITUDE).toBe(27.671);
+    expect(configWithAliases.STORE_ORIGIN_LONGITUDE).toBe(85.321);
+
+    // Explicit primary variable takes precedence over alias
+    const configWithBoth = loadConfig({
+      ...validEnvironment,
+      STORE_ORIGIN_LATITUDE: '27.7000',
+      STORE_ORIGIN_LAT: '27.6710',
+    });
+    expect(configWithBoth.STORE_ORIGIN_LATITUDE).toBe(27.7);
+  });
 });

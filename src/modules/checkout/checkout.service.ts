@@ -10,6 +10,9 @@ import type {
   ManagedPromoCode,
   PromoCodeRepository,
 } from '../promo-code/promo-code.types';
+import { isStoreOpenAt } from '../../utils/business-hours';
+import type { GeocodingProvider } from '../routing/routing.types';
+import type { StoreSettingsRepository } from '../store-settings/store-settings.types';
 import type {
   CheckoutCustomerInput,
   CheckoutInput,
@@ -19,6 +22,8 @@ import type {
   PaymentGateway,
   PublicOrderView,
 } from './checkout.types';
+
+export const MINIMUM_ORDER_SUBTOTAL = '800.00';
 
 export class ZeroDeliveryFeeEstimator implements DeliveryFeeEstimator {
   async estimateFee(): Promise<{ fee: string; currency: string }> {
@@ -62,6 +67,8 @@ export class CheckoutService {
     private readonly paymentMethodRepository?: PaymentMethodRepository,
     private readonly promoCodeRepository?: PromoCodeRepository,
     private readonly promoCodeService?: PromoCodeService,
+    private readonly storeSettingsRepository?: StoreSettingsRepository,
+    private readonly geocodingProvider?: GeocodingProvider,
   ) {}
 
   private generateOrderNumber(): string {
@@ -80,8 +87,16 @@ export class CheckoutService {
       customer: {
         name: customer.name.trim(),
         phone: customer.phone.trim(),
-        deliveryAddress: customer.deliveryAddress.trim(),
+        deliveryAddress: customer.deliveryAddress
+          ? customer.deliveryAddress.trim()
+          : null,
         email: customer.email?.trim().toLowerCase() || null,
+        coordinates: customer.coordinates
+          ? {
+              latitude: Number(customer.coordinates.latitude.toFixed(6)),
+              longitude: Number(customer.coordinates.longitude.toFixed(6)),
+            }
+          : null,
       },
       items: items
         .map((i) => ({ variantId: i.variantId, quantity: i.quantity }))
@@ -113,7 +128,112 @@ export class CheckoutService {
     return null;
   }
 
-  async processCheckout(input: CheckoutInput): Promise<OrderSnapshot> {
+  async processCheckout(
+    input: CheckoutInput,
+    now: Date = new Date(),
+  ): Promise<OrderSnapshot> {
+    // 0. Enforce ordering switch and business hours from StoreSettings if configured
+    if (this.storeSettingsRepository) {
+      const settings = await this.storeSettingsRepository.get();
+
+      if (!settings.isOrderingEnabled) {
+        throw new AppError(
+          400,
+          'ORDERING_PAUSED',
+          settings.orderingMessage?.trim() ||
+            'Online ordering is currently paused. Please check back later.',
+        );
+      }
+
+      if (settings.businessHours && settings.businessHours.length > 0) {
+        const isOpen = isStoreOpenAt(
+          settings.businessHours,
+          settings.timezone || 'Asia/Kathmandu',
+          now,
+        );
+        if (!isOpen) {
+          throw new AppError(
+            400,
+            'STORE_CLOSED',
+            'Store is currently closed for orders. Please check our opening hours.',
+          );
+        }
+      }
+    }
+
+    // Coordinates requirement (Task 3)
+    if (!input.customer.coordinates) {
+      throw new AppError(
+        400,
+        'COORDINATES_REQUIRED',
+        'Customer GPS coordinates (latitude and longitude) are required for delivery checkout',
+      );
+    }
+
+    const { latitude, longitude } = input.customer.coordinates;
+    if (
+      typeof latitude !== 'number' ||
+      typeof longitude !== 'number' ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      throw new AppError(
+        400,
+        'INVALID_COORDINATES',
+        'Delivery coordinates must have valid finite latitude [-90, 90] and longitude [-180, 180]',
+      );
+    }
+
+    // Derive verified delivery address via GeocodingProvider if available
+    let verifiedAddress: string;
+    if (this.geocodingProvider) {
+      let geocodedAddress: string;
+      try {
+        geocodedAddress = await this.geocodingProvider.reverseGeocode(
+          input.customer.coordinates,
+        );
+      } catch (error) {
+        if (error instanceof AppError) {
+          if (
+            error.code === 'GEOCODING_UNAVAILABLE' ||
+            error.statusCode === 503 ||
+            error.code === 'ROUTING_CONFIG_ERROR'
+          ) {
+            throw new AppError(
+              503,
+              'GEOCODING_UNAVAILABLE',
+              'Geocoding service is unavailable. Delivery location could not be verified.',
+            );
+          }
+          if (error.code === 'GEOCODING_FAILED' || error.statusCode === 404) {
+            throw new AppError(
+              400,
+              'GEOCODING_FAILED',
+              'Unable to verify delivery address from the provided coordinates. Please select a valid location.',
+            );
+          }
+          throw error;
+        }
+        throw new AppError(
+          400,
+          'GEOCODING_FAILED',
+          'Unable to verify delivery address from the provided coordinates. Please select a valid location.',
+        );
+      }
+
+      const manualAddress = input.customer.deliveryAddress?.trim();
+      verifiedAddress = manualAddress || geocodedAddress;
+    } else {
+      verifiedAddress =
+        input.customer.deliveryAddress?.trim() || 'Verified GPS Location';
+    }
+
+    input.customer.deliveryAddress = verifiedAddress;
+
     // 1. Resolve items to checkout first so we can fingerprint the request
     let itemsToCheckout: Array<{ variantId: string; quantity: number }> = [];
     let cartIdToClear: string | undefined;
@@ -263,6 +383,20 @@ export class CheckoutService {
       });
     }
 
+    const eligibleMerchandiseSubtotal =
+      subtotalDecimal.minus(discountTotalDecimal);
+    if (
+      eligibleMerchandiseSubtotal.lessThan(
+        new Prisma.Decimal(MINIMUM_ORDER_SUBTOTAL),
+      )
+    ) {
+      throw new AppError(
+        400,
+        'MINIMUM_ORDER_SUBTOTAL_NOT_MET',
+        `Minimum order merchandise subtotal of NPR ${MINIMUM_ORDER_SUBTOTAL} is required to checkout`,
+      );
+    }
+
     let promoCodeRecord: ManagedPromoCode | null = null;
     let promoDiscountDecimal = new Prisma.Decimal(0);
 
@@ -359,7 +493,10 @@ export class CheckoutService {
       orderNumber,
       orderLookupToken,
       lookupTokenHash,
-      customer: input.customer,
+      customer: {
+        ...input.customer,
+        deliveryAddress: verifiedAddress,
+      },
       items: orderItems,
       subtotal: subtotalDecimal.toFixed(2),
       discountTotal: discountTotalDecimal.toFixed(2),

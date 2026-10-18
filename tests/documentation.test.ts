@@ -57,6 +57,23 @@ describe('API Documentation & Postman Collection Verification', () => {
     expect(parsed.paths['/api/orders/{orderNumber}']).toBeDefined();
     expect(parsed.paths['/api/admin/dashboard/summary']).toBeDefined();
     expect(parsed.paths['/api/settings']).toBeDefined();
+    expect(parsed.paths['/api/admin/orders/{id}/invoice']).toBeDefined();
+    expect(parsed.paths['/api/newsletter/subscribe']).toBeDefined();
+    expect(parsed.paths['/api/newsletter/unsubscribe']).toBeDefined();
+    expect(parsed.paths['/api/admin/newsletter/subscribers']).toBeDefined();
+    expect(
+      parsed.paths['/api/admin/newsletter/subscribers/active'],
+    ).toBeDefined();
+    expect(
+      parsed.paths['/api/admin/newsletter/subscribers/{id}'],
+    ).toBeDefined();
+    expect(
+      parsed.paths['/api/admin/inventory/variants/{variantId}/adjustments'],
+    ).toBeDefined();
+    expect(
+      parsed.paths['/api/admin/inventory/variants/{variantId}/stock'],
+    ).toBeDefined();
+    expect(parsed.paths['/api/social-media/profiles']).toBeDefined();
 
     // Verify forbidden reorder endpoints are NOT exposed as paths
     expect(parsed.paths['/api/admin/categories/reorder']).toBeUndefined();
@@ -97,6 +114,13 @@ describe('API Documentation & Postman Collection Verification', () => {
     expect(folderNames).toContain(
       '18. Negative Cases & Forbidden Reorder Endpoints',
     );
+    expect(folderNames).toContain(
+      '19. Newsletter Subscriptions & Admin Management',
+    );
+    expect(folderNames).toContain('20. Contact Inquiries');
+    expect(folderNames).toContain('21. Media Uploads & Reference Safety');
+    expect(folderNames).toContain('22. Audit Logs');
+    expect(folderNames.length).toBe(22);
 
     // Check reordering requests: only Brands and Banners are allowed
     const flattenRequests = (items: PostmanItem[]): PostmanItem[] => {
@@ -113,6 +137,7 @@ describe('API Documentation & Postman Collection Verification', () => {
     };
 
     const allRequests = flattenRequests(collection.item);
+    expect(allRequests.length).toBeGreaterThanOrEqual(130);
     const brandReorderReq = allRequests.find((r) =>
       r.request.url.raw?.includes('/admin/brands/reorder'),
     );
@@ -121,6 +146,47 @@ describe('API Documentation & Postman Collection Verification', () => {
     );
     expect(brandReorderReq).toBeDefined();
     expect(bannerReorderReq).toBeDefined();
+
+    // Verify invoice download request exists in collection
+    const invoiceReq = allRequests.find((r) =>
+      r.request.url.raw?.includes('/admin/orders/{{orderNumber}}/invoice'),
+    );
+    expect(invoiceReq).toBeDefined();
+
+    // Verify newsletter subscription request exists in collection
+    const newsletterReq = allRequests.find((r) =>
+      r.request.url.raw?.includes('/api/newsletter/subscribe'),
+    );
+    expect(newsletterReq).toBeDefined();
+
+    // Verify inventory variant adjustment and stock requests
+    const invVariantAdjReq = allRequests.find((r) =>
+      r.request.url.raw?.includes(
+        '/admin/inventory/variants/{{variantId}}/adjustments',
+      ),
+    );
+    expect(invVariantAdjReq).toBeDefined();
+
+    const invVariantStockReq = allRequests.find((r) =>
+      r.request.url.raw?.includes(
+        '/admin/inventory/variants/{{variantId}}/stock',
+      ),
+    );
+    expect(invVariantStockReq).toBeDefined();
+
+    // Verify social media profiles request
+    const socialProfilesReq = allRequests.find((r) =>
+      r.request.url.raw?.includes('/api/social-media/profiles'),
+    );
+    expect(socialProfilesReq).toBeDefined();
+
+    // Verify role permission removal uses permissionKey variable
+    const rolePermDeleteReq = allRequests.find((r) =>
+      r.request.url.raw?.includes(
+        '/admin/roles/{{roleId}}/permissions/{{permissionKey}}',
+      ),
+    );
+    expect(rolePermDeleteReq).toBeDefined();
 
     // Verify negative tests asserting 404 for forbidden reorders
     const catReorderNegative = allRequests.find((r) =>
@@ -171,6 +237,14 @@ describe('API Documentation & Postman Collection Verification', () => {
     expect(envKeys).toContain('productId');
     expect(envKeys).toContain('variantId');
     expect(envKeys).toContain('bannerId');
+    expect(envKeys).toContain('subscriberId');
+    expect(envKeys).toContain('adminUserId');
+    expect(envKeys).toContain('roleId');
+    expect(envKeys).toContain('permissionKey');
+    expect(envKeys).toContain('imageId');
+    expect(envKeys).toContain('inquiryId');
+    expect(envKeys).toContain('mediaPublicId');
+    expect(envKeys).toContain('customerId');
 
     // Confirm secrets are never leaked as actual live tokens in template
     const tokenVal = env.values.find((v: EnvValue) => v.key === 'adminToken');

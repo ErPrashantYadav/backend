@@ -2,8 +2,13 @@
 
 Independent Node.js, TypeScript, Express and PostgreSQL e-commerce backend powering the Liquor Shop storefront and administration portal.
 
-## API Documentation & Postman
+## API Documentation & Developer Guides
 
+- **Setup from Scratch (Developer Onboarding)**: [docs/setup-from-scratch.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/setup-from-scratch.md)
+- **API Coverage Matrix (162 Endpoints)**: [docs/api-coverage-matrix.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/api-coverage-matrix.md)
+- **Core Features & Architecture Guide**: [docs/backend-feature-guide.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/backend-feature-guide.md)
+- **External Services Setup (Cloudinary, Maps, Email, WhatsApp)**: [docs/external-services-setup.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/external-services-setup.md)
+- **Environment Variables Reference**: [docs/environment-variables.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/environment-variables.md)
 - **Comprehensive API & Developer Guide**: [docs/api-documentation.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/api-documentation.md)
 - **Database & Admin Operations Guide**: [docs/database-and-admin-operations.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/database-and-admin-operations.md)
 - **Cloudinary Upload Testing Guide**: [docs/cloudinary-upload-testing.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/cloudinary-upload-testing.md)
@@ -11,7 +16,7 @@ Independent Node.js, TypeScript, Express and PostgreSQL e-commerce backend power
 - **OpenAPI 3.1 Specification (JSON)**: [docs/openapi.json](file:///d:/KreativeMandu/oldLiquor/backend/docs/openapi.json)
 - **OpenAPI 3.1 Specification (YAML)**: [docs/openapi.yaml](file:///d:/KreativeMandu/oldLiquor/backend/docs/openapi.yaml)
 - **Postman API Testing Guide**: [docs/postman-api-testing-guide.md](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman-api-testing-guide.md)
-- **Postman Collection (v2.1)**: [docs/postman/liquor-shop-backend.postman_collection.json](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman/liquor-shop-backend.postman_collection.json)
+- **Postman Collection (v2.1, 135 Requests across 22 Folders)**: [docs/postman/liquor-shop-backend.postman_collection.json](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman/liquor-shop-backend.postman_collection.json)
 - **Postman Environment Template**: [docs/postman/liquor-shop-backend.postman_environment.json](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman/liquor-shop-backend.postman_environment.json)
 
 ## Requirements

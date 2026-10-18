@@ -8,9 +8,9 @@ Comprehensive execution plan, variable chaining reference, request sequencing, a
 
 The repository provides an automated test collection and matching environment template in `docs/postman/`:
 
-- **Collection File**: [`docs/postman/liquor-shop-backend.postman_collection.json`](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman/liquor-shop-backend.postman_collection.json)
+- **Collection File**: [`docs/postman/liquor-shop-backend.postman_collection.json`](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman/liquor-shop-backend.postman_collection.json) (135 requests across 22 folders)
 - **Environment Template**: [`docs/postman/liquor-shop-backend.postman_environment.json`](file:///d:/KreativeMandu/oldLiquor/backend/docs/postman/liquor-shop-backend.postman_environment.json)
-- **OpenAPI 3.1 Spec (JSON)**: [`docs/openapi.json`](file:///d:/KreativeMandu/oldLiquor/backend/docs/openapi.json) (87 documented paths covering 148 operations)
+- **OpenAPI 3.1 Spec (JSON)**: [`docs/openapi.json`](file:///d:/KreativeMandu/oldLiquor/backend/docs/openapi.json) (93 documented paths covering 132 operations)
 - **OpenAPI 3.1 Spec (YAML)**: [`docs/openapi.yaml`](file:///d:/KreativeMandu/oldLiquor/backend/docs/openapi.yaml)
 
 ### 1.1 Variable Chaining Verification
@@ -23,15 +23,27 @@ Audit confirmed 100% alignment between referenced variables, environment definit
 | `adminEmail`          | Environment definition (`superadmin@liquor.test`)     | Admin Login request body                                         |
 | `adminPassword`       | Environment definition (`SuperAdminSecret123!`)       | Admin Login request body                                         |
 | `adminToken`          | Admin Login (`pm.environment.set("adminToken", ...)`) | All RBAC admin requests (`Authorization: Bearer {{adminToken}}`) |
+| `adminUserId`         | Admin List / Create Users                             | Admin Update User, Status, Password, Detail                      |
+| `roleId`              | Admin List / Create Roles                             | Admin Create User, Update Role, Replace Permissions              |
+| `permissionKey`       | Admin List Permissions                                | Role Permission Assignment & Revocation                          |
 | `categoryId`          | Admin Create Category                                 | Admin Update, Delete Category                                    |
 | `brandId`             | Admin Create Brand                                    | Admin Update, Delete, Reorder Brands                             |
 | `productId`           | Admin Create Product                                  | Admin Update Product, Create Variant, Attach Image               |
-| `variantId`           | Admin Create Variant                                  | Admin Update Variant, Cart Validation, Checkout Quote            |
-| `cartToken`           | Storefront Cart Validate (`X-Cart-Id`)                | Checkout Quote & Order Submission                                |
-| `orderNumber`         | Storefront Checkout                                   | Order Lookup, Payment Proof Submission                           |
+| `variantId`           | Admin Create Variant                                  | Admin Update Variant, Cart Addition, Stock Adjustment            |
+| `imageId`             | Admin Create Product Image                            | Admin Update, Delete Product Image                               |
+| `cartToken`           | Storefront Cart Init (`X-Cart-Id`)                    | Cart Items, Checkout Order Submission                            |
+| `orderNumber`         | Storefront Checkout                                   | Order Lookup, Payment Proof, Status Transitions, Invoice         |
 | `orderLookupToken`    | Storefront Checkout                                   | Order Lookup, Payment Proof Submission                           |
-| `paymentSubmissionId` | Admin List / Review Payments                          | Admin Approve / Reject Payment                                   |
-| `bannerId`            | Admin Create Banner                                   | Admin Update, Reorder, Delete Banner                             |
+| `paymentMethodId`     | Admin List / Create Payment Method                    | Admin Update Payment Method, Set Status                          |
+| `paymentSubmissionId` | Admin List / Submit Payment Proof                     | Admin Approve / Reject / Review Payment                          |
+| `customerId`          | Admin List Customers                                  | Admin Customer Detail, Customer Order History                    |
+| `bannerId`            | Admin Create Banner                                   | Admin Update, Set Status, Reorder, Delete Banner                 |
+| `galleryId`           | Admin Create Gallery Item                             | Admin Update, Set Status, Delete Gallery Item                    |
+| `socialMediaId`       | Admin Create Social Media                             | Admin Update, Set Status, Delete Social Media                    |
+| `promoCodeId`         | Admin List / Create Promo Code                        | Admin Update, Set Status, Delete Promo Code                      |
+| `inquiryId`           | Public Submit / Admin List Inquiries                  | Admin Get Inquiry, Update Status, Delete Inquiry                 |
+| `mediaPublicId`       | Admin Upload Media Asset                              | Admin Delete Media Asset                                         |
+| `subscriberId`        | Public / Admin Newsletter Subscriptions               | Admin Delete Subscriber                                          |
 
 ---
 
@@ -130,15 +142,22 @@ flowchart TD
    - `POST /api/checkout` $\to$ places order, captures `orderNumber` and `orderLookupToken`.
 6. **Order Fulfillment & Proof Submission**:
    - `GET /api/orders/{{orderNumber}}` $\to$ verifies order details with lookup token.
-   - `POST /api/payments/{{orderNumber}}/payment-proof` $\to$ submits bank transfer receipt reference.
-   - `POST /api/admin/payments/{{paymentSubmissionId}}/approve` $\to$ approves payment.
+   - `POST /api/orders/{{orderNumber}}/payment-proof` $\to$ submits bank transfer receipt (multipart file upload or JSON Cloudinary URL).
+   - `POST /api/admin/payment-submissions/{{paymentSubmissionId}}/approve` $\to$ approves payment.
    - `PATCH /api/admin/orders/{{orderNumber}}/status` $\to$ transitions status (`CONFIRMED`).
+   - `GET /api/admin/orders/{{orderNumber}}/invoice` $\to$ downloads PDF tax invoice.
 7. **Negative Tests (Reorder Restrictions)**:
    - Execute folder `18. Negative Cases`:
      - Assert `PUT /api/admin/categories/reorder` returns **HTTP 404 Not Found**.
      - Assert `PUT /api/admin/products/reorder` returns **HTTP 404 Not Found**.
      - Assert `PUT /api/admin/gallery/reorder` returns **HTTP 404 Not Found**.
      - Assert `PUT /api/admin/social-media/reorder` returns **HTTP 404 Not Found**.
+8. **Newsletter Subscriptions & Management**:
+   - Execute folder `19. Newsletter Subscriptions & Admin Management`:
+     - `POST /api/newsletter/subscribe` $\to$ subscribes email address.
+     - `POST /api/newsletter/unsubscribe` $\to$ unregisters email address.
+     - `GET /api/admin/newsletter/subscribers` $\to$ retrieves subscribers list, captures `subscriberId`.
+     - `DELETE /api/admin/newsletter/subscribers/{{subscriberId}}` $\to$ removes subscriber.
 
 ---
 

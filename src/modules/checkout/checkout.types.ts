@@ -1,7 +1,7 @@
 export interface CheckoutCustomerInput {
   name: string;
   phone: string;
-  deliveryAddress: string;
+  deliveryAddress?: string;
   email?: string | null;
   coordinates?: {
     latitude: number;
@@ -122,7 +122,7 @@ export interface CreateOrderParams {
   orderNumber: string;
   orderLookupToken: string;
   lookupTokenHash: string;
-  customer: CheckoutCustomerInput;
+  customer: CheckoutCustomerInput & { deliveryAddress: string };
   items: Array<{
     variantId: string;
     productName: string;

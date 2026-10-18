@@ -522,8 +522,8 @@ describe('Task 34 — Final Backend Integration Check', () => {
       const variant = await catalogRepo.addProductVariant(product.id, {
         sku: 'MAC-12-750ML',
         size: '750 ml',
-        purchasePrice: '80.00',
-        sellingPrice: '100.00',
+        purchasePrice: '400.00',
+        sellingPrice: '500.00',
         stock: 50,
         lowStockThreshold: 5,
         isActive: true,
@@ -569,6 +569,7 @@ describe('Task 34 — Final Backend Integration Check', () => {
             phone: '9841234567',
             email: 'prakash@example.test',
             deliveryAddress: 'Thamel, Kathmandu, Nepal',
+            coordinates: { latitude: 27.7172, longitude: 85.324 },
           },
           paymentMethodCode: 'CASH_ON_DELIVERY',
           promoCode: 'WELCOME10',
@@ -584,14 +585,14 @@ describe('Task 34 — Final Backend Integration Check', () => {
       expect(variant.stock).toBe(48); // 50 - 2 = 48
 
       // Check order summary pricing:
-      // Selling price 100 * 2 = subtotal 200.00
-      // 10% product discount = 20.00 off + Promo discount 10.00 off -> discountTotal 30.00
+      // Selling price 500 * 2 = subtotal 1000.00
+      // 10% product discount = 100.00 off + Promo discount 10.00 off -> discountTotal 110.00
       // Delivery fee: flat 100.00
-      // Total: 200 - 30 + 100 = 270.00
-      expect(Number(orderData.subtotal)).toBe(200);
-      expect(Number(orderData.discountTotal)).toBe(30);
+      // Total: 1000 - 110 + 100 = 990.00
+      expect(Number(orderData.subtotal)).toBe(1000);
+      expect(Number(orderData.discountTotal)).toBe(110);
       expect(Number(orderData.deliveryFee)).toBe(100);
-      expect(Number(orderData.total)).toBe(270);
+      expect(Number(orderData.total)).toBe(990);
 
       // 6. Public Order Lookup with Order Token
       const lookupRes = await request(app).get(
@@ -608,7 +609,7 @@ describe('Task 34 — Final Backend Integration Check', () => {
         .query({ search: '9841234567' });
       expect(adminCustRes.status).toBe(200);
       expect(adminCustRes.body.data.items.length).toBeGreaterThan(0);
-      expect(adminCustRes.body.data.items[0].phone).toBe('9841234567');
+      expect(adminCustRes.body.data.items[0].phone).toBe('+9779841234567');
 
       // 8. Admin Dashboard Summary reflects order
       const dashRes = await request(app)

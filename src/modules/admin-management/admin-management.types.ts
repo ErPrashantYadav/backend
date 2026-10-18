@@ -66,6 +66,8 @@ export const ADMIN_PERMISSION_KEYS = [
   'social-media.create',
   'social-media.update',
   'social-media.delete',
+  'newsletter.read',
+  'newsletter.delete',
 ] as const;
 
 export interface ManagedAdmin {

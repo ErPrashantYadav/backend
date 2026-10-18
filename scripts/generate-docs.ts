@@ -114,6 +114,11 @@ Provides endpoints for guest cart and checkout, inventory control, catalog manag
       name: 'Media Uploads',
       description: 'Cloudinary media upload and reference-safe deletion',
     },
+    {
+      name: 'Newsletter',
+      description:
+        'Public newsletter subscriptions and administrative subscriber management',
+    },
   ],
   components: {
     securitySchemes: {
@@ -412,6 +417,7 @@ Provides endpoints for guest cart and checkout, inventory control, catalog manag
               phone: { type: 'string', example: '+977-9841234567' },
               deliveryAddress: {
                 type: 'string',
+                nullable: true,
                 example: 'House 42, Thamel Ward 26, Kathmandu',
               },
               email: {
@@ -422,14 +428,26 @@ Provides endpoints for guest cart and checkout, inventory control, catalog manag
               },
               coordinates: {
                 type: 'object',
-                nullable: true,
+                description:
+                  'Customer delivery GPS coordinates (required for delivery checkout)',
                 properties: {
-                  latitude: { type: 'number', example: 27.7172 },
-                  longitude: { type: 'number', example: 85.324 },
+                  latitude: {
+                    type: 'number',
+                    minimum: -90,
+                    maximum: 90,
+                    example: 27.7172,
+                  },
+                  longitude: {
+                    type: 'number',
+                    minimum: -180,
+                    maximum: 180,
+                    example: 85.324,
+                  },
                 },
+                required: ['latitude', 'longitude'],
               },
             },
-            required: ['name', 'phone', 'deliveryAddress'],
+            required: ['name', 'phone', 'coordinates'],
           },
           cartId: {
             type: 'string',
@@ -642,6 +660,141 @@ Provides endpoints for guest cart and checkout, inventory control, catalog manag
               },
             },
           },
+          announcement: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              text: {
+                type: 'string',
+                example:
+                  'Same-day delivery available across Kathmandu valley until 9 PM.',
+              },
+              active: { type: 'boolean', example: true },
+            },
+            required: ['text', 'active'],
+          },
+          minOrderSubtotal: {
+            type: 'string',
+            example: '800.00',
+            description:
+              'Storewide minimum merchandise subtotal required for checkout',
+          },
+          storeOriginLatitude: {
+            type: 'number',
+            nullable: true,
+            example: 27.7172,
+            description: 'Store dispatch base latitude for delivery routing',
+          },
+          storeOriginLongitude: {
+            type: 'number',
+            nullable: true,
+            example: 85.324,
+            description: 'Store dispatch base longitude for delivery routing',
+          },
+          deliveryPricing: {
+            type: 'object',
+            properties: {
+              mode: {
+                type: 'string',
+                enum: ['FIXED', 'PER_KM', 'TIERED'],
+                example: 'PER_KM',
+              },
+              baseAmount: { type: 'string', example: '100.00' },
+              perKmAmount: { type: 'string', example: '25.00' },
+              freeDeliveryThreshold: {
+                type: 'string',
+                nullable: true,
+                example: '5000.00',
+              },
+              maxDistanceKm: { type: 'string', example: '25.00' },
+              fallbackAmount: { type: 'string', example: '0.00' },
+            },
+            required: [
+              'mode',
+              'baseAmount',
+              'perKmAmount',
+              'maxDistanceKm',
+              'fallbackAmount',
+            ],
+          },
+          isOrderingEnabled: {
+            type: 'boolean',
+            example: true,
+            description:
+              'Master switch enabling/disabling customer order placement',
+          },
+          orderingMessage: {
+            type: 'string',
+            nullable: true,
+            example: null,
+            description: 'Customer announcement when ordering is paused',
+          },
+        },
+        required: [
+          'storeName',
+          'primaryPhone',
+          'supportEmail',
+          'address',
+          'city',
+          'timezone',
+          'minOrderSubtotal',
+          'deliveryPricing',
+          'isOrderingEnabled',
+        ],
+      },
+      AdminStoreSettings: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: 'default' },
+          storeName: { type: 'string', example: 'Old Liquor Shop' },
+          storeTagline: {
+            type: 'string',
+            nullable: true,
+            example: 'Premium Wines & Spirits in Kathmandu',
+          },
+          primaryPhone: { type: 'string', example: '+977-9841234567' },
+          secondaryPhone: {
+            type: 'string',
+            nullable: true,
+            example: '+977-1-4412345',
+          },
+          supportEmail: {
+            type: 'string',
+            format: 'email',
+            example: 'support@oldliquor.com',
+          },
+          address: { type: 'string', example: 'Tridevi Marg, Thamel Ward 26' },
+          city: { type: 'string', example: 'Kathmandu' },
+          locationUrl: {
+            type: 'string',
+            format: 'uri',
+            nullable: true,
+            example: 'https://maps.google.com/?q=27.7172,85.3240',
+          },
+          timezone: { type: 'string', example: 'Asia/Kathmandu' },
+          businessHours: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                day: {
+                  type: 'string',
+                  enum: [
+                    'MONDAY',
+                    'TUESDAY',
+                    'WEDNESDAY',
+                    'THURSDAY',
+                    'FRIDAY',
+                    'SATURDAY',
+                    'SUNDAY',
+                  ],
+                },
+                isOpen: { type: 'boolean', example: true },
+                openTime: { type: 'string', nullable: true, example: '10:00' },
+                closeTime: { type: 'string', nullable: true, example: '22:00' },
+              },
+            },
+          },
           announcementText: {
             type: 'string',
             nullable: true,
@@ -659,6 +812,38 @@ Provides endpoints for guest cart and checkout, inventory control, catalog manag
             format: 'date-time',
             nullable: true,
           },
+          storeOriginLatitude: {
+            type: 'number',
+            nullable: true,
+            example: 27.7172,
+          },
+          storeOriginLongitude: {
+            type: 'number',
+            nullable: true,
+            example: 85.324,
+          },
+          deliveryFeeMode: {
+            type: 'string',
+            enum: ['FIXED', 'PER_KM', 'TIERED'],
+            example: 'PER_KM',
+          },
+          deliveryFeeBaseAmount: { type: 'string', example: '100.00' },
+          deliveryFeePerKmAmount: { type: 'string', example: '25.00' },
+          deliveryFeeFreeThreshold: {
+            type: 'string',
+            nullable: true,
+            example: '5000.00',
+          },
+          hasExplicitDeliveryFeeFreeThreshold: {
+            type: 'boolean',
+            example: false,
+          },
+          deliveryMaxDistanceKm: { type: 'string', example: '25.00' },
+          deliveryFallbackAmount: { type: 'string', example: '0.00' },
+          isOrderingEnabled: { type: 'boolean', example: true },
+          orderingMessage: { type: 'string', nullable: true, example: null },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
         },
         required: [
           'storeName',
@@ -667,6 +852,136 @@ Provides endpoints for guest cart and checkout, inventory control, catalog manag
           'address',
           'city',
           'timezone',
+          'deliveryFeeMode',
+          'deliveryFeeBaseAmount',
+          'deliveryFeePerKmAmount',
+          'hasExplicitDeliveryFeeFreeThreshold',
+          'deliveryMaxDistanceKm',
+          'deliveryFallbackAmount',
+          'isOrderingEnabled',
+        ],
+      },
+      UpdateStoreSettingsRequest: {
+        type: 'object',
+        properties: {
+          storeName: { type: 'string' },
+          storeTagline: { type: 'string', nullable: true },
+          primaryPhone: { type: 'string' },
+          secondaryPhone: { type: 'string', nullable: true },
+          supportEmail: { type: 'string', format: 'email' },
+          address: { type: 'string' },
+          city: { type: 'string' },
+          locationUrl: { type: 'string', format: 'uri', nullable: true },
+          timezone: { type: 'string' },
+          businessHours: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                day: {
+                  type: 'string',
+                  enum: [
+                    'MONDAY',
+                    'TUESDAY',
+                    'WEDNESDAY',
+                    'THURSDAY',
+                    'FRIDAY',
+                    'SATURDAY',
+                    'SUNDAY',
+                  ],
+                },
+                isOpen: { type: 'boolean' },
+                openTime: { type: 'string', nullable: true },
+                closeTime: { type: 'string', nullable: true },
+              },
+            },
+          },
+          announcementText: { type: 'string', nullable: true },
+          announcementActive: { type: 'boolean' },
+          announcementStartDate: {
+            type: 'string',
+            format: 'date-time',
+            nullable: true,
+          },
+          announcementEndDate: {
+            type: 'string',
+            format: 'date-time',
+            nullable: true,
+          },
+          storeOriginLatitude: {
+            type: 'number',
+            minimum: -90,
+            maximum: 90,
+            nullable: true,
+          },
+          storeOriginLongitude: {
+            type: 'number',
+            minimum: -180,
+            maximum: 180,
+            nullable: true,
+          },
+          deliveryFeeMode: {
+            type: 'string',
+            enum: ['FIXED', 'PER_KM', 'TIERED'],
+          },
+          deliveryFeeBaseAmount: {
+            oneOf: [{ type: 'number', minimum: 0 }, { type: 'string' }],
+          },
+          deliveryFeePerKmAmount: {
+            oneOf: [{ type: 'number', minimum: 0 }, { type: 'string' }],
+          },
+          deliveryFeeFreeThreshold: {
+            oneOf: [{ type: 'number', minimum: 0 }, { type: 'string' }],
+            nullable: true,
+          },
+          hasExplicitDeliveryFeeFreeThreshold: {
+            type: 'boolean',
+            description:
+              'Whether free delivery threshold has been explicitly set in settings (overriding env fallback)',
+          },
+          deliveryMaxDistanceKm: {
+            oneOf: [
+              { type: 'number', exclusiveMinimum: 0 },
+              { type: 'string' },
+            ],
+          },
+          deliveryFallbackAmount: {
+            oneOf: [{ type: 'number', minimum: 0 }, { type: 'string' }],
+          },
+          isOrderingEnabled: { type: 'boolean' },
+          orderingMessage: { type: 'string', maxLength: 500, nullable: true },
+        },
+      },
+      NewsletterSubscriber: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            format: 'uuid',
+            example: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+          },
+          email: {
+            type: 'string',
+            format: 'email',
+            example: 'customer@example.com',
+          },
+          isActive: { type: 'boolean', example: true },
+          subscribedAt: { type: 'string', format: 'date-time' },
+          unsubscribedAt: {
+            type: 'string',
+            format: 'date-time',
+            nullable: true,
+          },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+        required: [
+          'id',
+          'email',
+          'isActive',
+          'subscribedAt',
+          'createdAt',
+          'updatedAt',
         ],
       },
       SocialMediaItem: {
@@ -1887,6 +2202,66 @@ p['/api/admin/inventory/low-stock'] = {
     responses: { '200': genericOkResponse({ type: 'object' }) },
   },
 };
+p['/api/admin/inventory/variants/{variantId}/adjustments'] = {
+  post: {
+    tags: ['Inventory'],
+    summary: 'Record variant stock adjustment via URL parameter',
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      {
+        name: 'variantId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+      },
+    ],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              quantityDelta: { type: 'integer', example: 10 },
+              type: {
+                type: 'string',
+                enum: [
+                  'RESTOCK',
+                  'DAMAGE',
+                  'RETURN_RESTOCK',
+                  'CORRECTION',
+                  'INTERNAL_USE',
+                ],
+              },
+              reason: {
+                type: 'string',
+                example: 'Variant restock received',
+              },
+            },
+            required: ['quantityDelta', 'type', 'reason'],
+          },
+        },
+      },
+    },
+    responses: { '200': genericOkResponse({ type: 'object' }) },
+  },
+};
+p['/api/admin/inventory/variants/{variantId}/stock'] = {
+  get: {
+    tags: ['Inventory'],
+    summary: 'Get variant current stock level',
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      {
+        name: 'variantId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+      },
+    ],
+    responses: { '200': genericOkResponse({ type: 'object' }) },
+  },
+};
 
 // Cart
 p['/api/cart'] = {
@@ -2012,6 +2387,12 @@ p['/api/checkout'] = {
   post: {
     tags: ['Checkout & Orders'],
     summary: 'Place order via guest checkout',
+    description: `Places a guest customer order with server-side validation.
+Enforces:
+- Minimum merchandise subtotal of NPR 800.00 (MINIMUM_ORDER_SUBTOTAL_NOT_MET)
+- Customer delivery GPS coordinates (COORDINATES_REQUIRED, INVALID_COORDINATES)
+- Delivery distance validation and max radius limit (MAX_DISTANCE_EXCEEDED)
+- Ordering pause switch and business hours schedule (ORDERING_PAUSED, STORE_CLOSED)`,
     parameters: [
       { name: 'X-Cart-Id', in: 'header', schema: { type: 'string' } },
       { name: 'Idempotency-Key', in: 'header', schema: { type: 'string' } },
@@ -2026,11 +2407,15 @@ p['/api/checkout'] = {
     },
     responses: {
       '201': okResponse('#/components/schemas/OrderSummary'),
-      '400': errorResponse(
-        400,
-        'INSUFFICIENT_STOCK',
-        'Insufficient stock or inactive variant',
-      ),
+      '400': {
+        description:
+          'Checkout business rule or validation error (MINIMUM_ORDER_SUBTOTAL_NOT_MET, COORDINATES_REQUIRED, INVALID_COORDINATES, MAX_DISTANCE_EXCEEDED, ORDERING_PAUSED, STORE_CLOSED, INSUFFICIENT_STOCK)',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ErrorEnvelope' },
+          },
+        },
+      },
     },
   },
 };
@@ -2162,23 +2547,68 @@ p['/api/admin/payment-methods/{id}/status'] = {
 p['/api/orders/{orderNumber}/payment-proof'] = {
   post: {
     tags: ['Payment Submissions'],
-    summary: 'Submit payment proof for order',
+    summary:
+      'Submit payment proof for order (multipart file upload or JSON URL)',
+    description:
+      'Upload bank transfer or QR payment proof screenshot. Accepts multipart/form-data with image file up to 5MB, or application/json with Cloudinary URL. Requires valid guest order lookup token.',
     parameters: [
       {
         name: 'orderNumber',
         in: 'path',
         required: true,
         schema: { type: 'string' },
+        description: 'Order number (e.g. ORD-20261012-A1B2C3)',
+      },
+      {
+        name: 'X-Order-Lookup-Token',
+        in: 'header',
+        required: false,
+        schema: { type: 'string' },
+        description:
+          'Guest order lookup token (can also be passed in body or token query param)',
       },
     ],
     requestBody: {
       required: true,
       content: {
+        'multipart/form-data': {
+          schema: {
+            type: 'object',
+            properties: {
+              file: {
+                type: 'string',
+                format: 'binary',
+                description:
+                  'Payment slip screenshot (JPEG, PNG, WebP up to 5MB)',
+              },
+              transactionReference: {
+                type: 'string',
+                nullable: true,
+                description: 'Bank or wallet transaction reference ID',
+              },
+              customerNotes: {
+                type: 'string',
+                nullable: true,
+                description: 'Optional customer note',
+              },
+              orderLookupToken: {
+                type: 'string',
+                description:
+                  'Guest order lookup token if not supplied via header',
+              },
+            },
+            required: ['file'],
+          },
+        },
         'application/json': {
           schema: {
             type: 'object',
             properties: {
-              proofImageUrl: { type: 'string', format: 'uri' },
+              proofImageUrl: {
+                type: 'string',
+                format: 'uri',
+                description: 'Direct Cloudinary URL of uploaded receipt',
+              },
               transactionReference: { type: 'string', nullable: true },
               customerNotes: { type: 'string', nullable: true },
               orderLookupToken: { type: 'string' },
@@ -2188,7 +2618,27 @@ p['/api/orders/{orderNumber}/payment-proof'] = {
         },
       },
     },
-    responses: { '201': genericOkResponse({ type: 'object' }) },
+    responses: {
+      '201': genericOkResponse(
+        { type: 'object' },
+        'Payment proof submitted successfully',
+      ),
+      '400': errorResponse(
+        400,
+        'VALIDATION_ERROR',
+        'Missing proof image or file exceeds 5MB limit',
+      ),
+      '404': errorResponse(
+        404,
+        'ORDER_NOT_FOUND',
+        'Order not found or invalid lookup token',
+      ),
+      '429': errorResponse(
+        429,
+        'RATE_LIMITED',
+        'Too many payment submission attempts; try again later',
+      ),
+    },
   },
 };
 p['/api/admin/payment-submissions'] = {
@@ -2323,6 +2773,59 @@ p['/api/admin/orders/{id}'] = {
       { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
     ],
     responses: { '200': genericOkResponse({ type: 'object' }) },
+  },
+};
+p['/api/admin/orders/{id}/invoice'] = {
+  get: {
+    tags: ['Order Management'],
+    summary: 'Download tax invoice PDF for order',
+    description:
+      'Generates and streams a deterministic PDF tax invoice containing itemized breakdown, customer info, delivery charges, VAT summary, and store credentials. Requires orders.read permission.',
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' },
+        description: 'Order ID or order number (ORD-...)',
+      },
+    ],
+    responses: {
+      '200': {
+        description: 'Tax invoice PDF binary stream',
+        headers: {
+          'Content-Type': {
+            schema: { type: 'string', example: 'application/pdf' },
+          },
+          'Content-Disposition': {
+            schema: {
+              type: 'string',
+              example: 'inline; filename="invoice-ORD-20261012-A1B2C3.pdf"',
+            },
+          },
+          'Content-Length': {
+            schema: { type: 'integer', example: 45678 },
+          },
+        },
+        content: {
+          'application/pdf': {
+            schema: { type: 'string', format: 'binary' },
+          },
+        },
+      },
+      '401': errorResponse(
+        401,
+        'UNAUTHORIZED',
+        'Authentication token missing or invalid',
+      ),
+      '403': errorResponse(
+        403,
+        'FORBIDDEN',
+        'Insufficient permissions (requires orders.read)',
+      ),
+      '404': errorResponse(404, 'ORDER_NOT_FOUND', 'Order not found'),
+    },
   },
 };
 p['/api/admin/orders/{id}/history'] = {
@@ -2800,18 +3303,37 @@ p['/api/admin/settings'] = {
     tags: ['Store Settings'],
     summary: 'Get complete admin store configuration',
     security: [{ BearerAuth: [] }],
-    responses: { '200': okResponse('#/components/schemas/StoreSettings') },
+    responses: { '200': okResponse('#/components/schemas/AdminStoreSettings') },
+  },
+  put: {
+    tags: ['Store Settings'],
+    summary:
+      'Update store configuration, business hours, GPS origin, and delivery pricing policy',
+    security: [{ BearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/UpdateStoreSettingsRequest' },
+        },
+      },
+    },
+    responses: { '200': okResponse('#/components/schemas/AdminStoreSettings') },
   },
   patch: {
     tags: ['Store Settings'],
     summary:
-      'Update store configuration, business hours, and announcement schedule',
+      'Partially update store configuration, business hours, GPS origin, and delivery pricing policy',
     security: [{ BearerAuth: [] }],
     requestBody: {
       required: true,
-      content: { 'application/json': { schema: { type: 'object' } } },
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/UpdateStoreSettingsRequest' },
+        },
+      },
     },
-    responses: { '200': okResponse('#/components/schemas/StoreSettings') },
+    responses: { '200': okResponse('#/components/schemas/AdminStoreSettings') },
   },
 };
 
@@ -2836,10 +3358,17 @@ p['/api/social-media'] = {
     },
   },
 };
+p['/api/social-media/profiles'] = {
+  get: {
+    tags: ['Social Media'],
+    summary: 'Public list profile handles grouped by platform key (canonical)',
+    responses: { '200': genericOkResponse({ type: 'object' }) },
+  },
+};
 p['/api/social-media-link'] = {
   get: {
     tags: ['Social Media'],
-    summary: 'Public list profile handles grouped by platform key',
+    summary: 'Public list profile handles grouped by platform key (alias)',
     responses: { '200': genericOkResponse({ type: 'object' }) },
   },
 };
@@ -3121,6 +3650,199 @@ p['/api/admin/media'] = {
   },
 };
 
+// Newsletter
+p['/api/newsletter/subscribe'] = {
+  post: {
+    tags: ['Newsletter'],
+    summary: 'Subscribe email to storefront newsletter',
+    description:
+      'Subscribes an email address to the newsletter. Rate-limited to 30 requests per 15 minutes per IP. Re-activates existing subscribers if previously unsubscribed.',
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              email: {
+                type: 'string',
+                format: 'email',
+                example: 'customer@example.com',
+              },
+            },
+            required: ['email'],
+          },
+        },
+      },
+    },
+    responses: {
+      '201': genericOkResponse(
+        { $ref: '#/components/schemas/NewsletterSubscriber' },
+        'Successfully subscribed to newsletter',
+      ),
+      '400': errorResponse(
+        400,
+        'VALIDATION_ERROR',
+        'Valid email address is required',
+      ),
+      '429': errorResponse(
+        429,
+        'RATE_LIMITED',
+        'Too many newsletter requests from this IP; please try again later',
+      ),
+    },
+  },
+};
+p['/api/newsletter/unsubscribe'] = {
+  post: {
+    tags: ['Newsletter'],
+    summary: 'Unsubscribe email from storefront newsletter',
+    description:
+      'Marks a subscriber inactive. Rate-limited to 30 requests per 15 minutes per IP. Safe idempotency if email does not exist.',
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              email: {
+                type: 'string',
+                format: 'email',
+                example: 'customer@example.com',
+              },
+            },
+            required: ['email'],
+          },
+        },
+      },
+    },
+    responses: {
+      '200': genericOkResponse(
+        { type: 'object', nullable: true },
+        'Successfully unsubscribed from newsletter',
+      ),
+      '400': errorResponse(
+        400,
+        'VALIDATION_ERROR',
+        'Valid email address is required',
+      ),
+      '429': errorResponse(
+        429,
+        'RATE_LIMITED',
+        'Too many newsletter requests from this IP; please try again later',
+      ),
+    },
+  },
+};
+p['/api/admin/newsletter/subscribers'] = {
+  get: {
+    tags: ['Newsletter'],
+    summary: 'Admin list all newsletter subscribers',
+    description:
+      'Fetches all newsletter subscribers ordered by subscribedAt descending. Supports case-insensitive partial email search. Requires newsletter.read permission.',
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      {
+        name: 'search',
+        in: 'query',
+        schema: { type: 'string' },
+        description: 'Case-insensitive search query matching subscriber email',
+      },
+    ],
+    responses: {
+      '200': genericOkResponse(
+        {
+          type: 'array',
+          items: { $ref: '#/components/schemas/NewsletterSubscriber' },
+        },
+        'Newsletter subscribers fetched',
+      ),
+      '401': errorResponse(
+        401,
+        'UNAUTHORIZED',
+        'Authentication token missing or invalid',
+      ),
+      '403': errorResponse(
+        403,
+        'FORBIDDEN',
+        'Insufficient permissions (requires newsletter.read)',
+      ),
+    },
+  },
+};
+p['/api/admin/newsletter/subscribers/active'] = {
+  get: {
+    tags: ['Newsletter'],
+    summary: 'Admin list active newsletter subscribers',
+    description:
+      'Fetches only active newsletter subscribers ordered by subscribedAt descending. Supports case-insensitive partial email search. Requires newsletter.read permission.',
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      {
+        name: 'search',
+        in: 'query',
+        schema: { type: 'string' },
+        description: 'Case-insensitive search query matching subscriber email',
+      },
+    ],
+    responses: {
+      '200': genericOkResponse(
+        {
+          type: 'array',
+          items: { $ref: '#/components/schemas/NewsletterSubscriber' },
+        },
+        'Active subscribers fetched',
+      ),
+      '401': errorResponse(
+        401,
+        'UNAUTHORIZED',
+        'Authentication token missing or invalid',
+      ),
+      '403': errorResponse(
+        403,
+        'FORBIDDEN',
+        'Insufficient permissions (requires newsletter.read)',
+      ),
+    },
+  },
+};
+p['/api/admin/newsletter/subscribers/{id}'] = {
+  delete: {
+    tags: ['Newsletter'],
+    summary: 'Admin delete newsletter subscriber',
+    description:
+      'Permanently deletes a newsletter subscriber record by UUID and logs an immutable audit entry. Requires newsletter.delete permission.',
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+        description: 'Subscriber unique ID',
+      },
+    ],
+    responses: {
+      '200': genericOkResponse(
+        { type: 'object', nullable: true },
+        'Subscriber deleted successfully',
+      ),
+      '401': errorResponse(
+        401,
+        'UNAUTHORIZED',
+        'Authentication token missing or invalid',
+      ),
+      '403': errorResponse(
+        403,
+        'FORBIDDEN',
+        'Insufficient permissions (requires newsletter.delete)',
+      ),
+      '404': errorResponse(404, 'NOT_FOUND', 'Subscriber not found'),
+    },
+  },
+};
+
 // Write openapi.json and openapi.yaml
 fs.writeFileSync(
   path.resolve(docsDir, 'openapi.json'),
@@ -3133,6 +3855,10 @@ fs.writeFileSync(
   'utf8',
 );
 console.log('✓ Successfully wrote docs/openapi.json and docs/openapi.yaml');
+
+// ============================================================================
+// 2. POSTMAN COLLECTION & ENVIRONMENT GENERATION
+// ============================================================================
 
 // ============================================================================
 // 2. POSTMAN COLLECTION & ENVIRONMENT GENERATION
@@ -3151,6 +3877,7 @@ const postmanCollection: Record<string, unknown> = {
     { key: 'baseUrl', value: 'http://localhost:3000', type: 'string' },
   ],
   item: [
+    // 1. Health & System
     {
       name: '1. Health & System',
       item: [
@@ -3202,6 +3929,8 @@ const postmanCollection: Record<string, unknown> = {
         },
       ],
     },
+
+    // 2. Admin Authentication
     {
       name: '2. Admin Authentication',
       item: [
@@ -3263,6 +3992,8 @@ const postmanCollection: Record<string, unknown> = {
         },
       ],
     },
+
+    // 3. Admin Management
     {
       name: '3. Admin Management',
       item: [
@@ -3272,9 +4003,148 @@ const postmanCollection: Record<string, unknown> = {
             method: 'GET',
             header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
             url: {
+              raw: '{{baseUrl}}/api/admin/users?page=1&pageSize=20',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'users'],
+              query: [
+                { key: 'page', value: '1' },
+                { key: 'pageSize', value: '20' },
+              ],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.items && json.data.items.length > 0 && !pm.environment.get("adminUserId")) {',
+                  '  pm.environment.set("adminUserId", json.data.items[0].id);',
+                  '}',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Create Admin User (POST /api/admin/users)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  email: 'staff-' + Date.now() + '@liquor.test',
+                  name: 'Operations Staff',
+                  password: 'StaffSecretPass123!Secure',
+                  roleId: '{{roleId}}',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
               raw: '{{baseUrl}}/api/admin/users',
               host: ['{{baseUrl}}'],
               path: ['api', 'admin', 'users'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201 or 400", () => pm.expect([201, 400]).to.include(pm.response.code));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.id) pm.environment.set("adminUserId", json.data.id);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Get Admin User by ID (GET /api/admin/users/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/users/{{adminUserId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'users', '{{adminUserId}}'],
+            },
+          },
+        },
+        {
+          name: 'Update Admin User (PATCH /api/admin/users/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  name: 'Operations Staff Senior',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/users/{{adminUserId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'users', '{{adminUserId}}'],
+            },
+          },
+        },
+        {
+          name: 'Set Admin User Active Status (PATCH /api/admin/users/:id/status)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ isActive: true }, null, 2),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/users/{{adminUserId}}/status',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'users', '{{adminUserId}}', 'status'],
+            },
+          },
+        },
+        {
+          name: 'Set Admin User Password (PATCH /api/admin/users/:id/password)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                { password: 'UpdatedSecurePassword123!456' },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/users/{{adminUserId}}/password',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'users', '{{adminUserId}}', 'password'],
             },
           },
         },
@@ -3289,6 +4159,100 @@ const postmanCollection: Record<string, unknown> = {
               path: ['api', 'admin', 'roles'],
             },
           },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.length > 0 && !pm.environment.get("roleId")) {',
+                  '  pm.environment.set("roleId", json.data[0].id);',
+                  '}',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Create Role (POST /api/admin/roles)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  name: 'Store Supervisor ' + Date.now(),
+                  description: 'Manages catalog inventory and orders',
+                  isActive: true,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/roles',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'roles'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201", () => pm.response.to.have.status(201));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.id) pm.environment.set("roleId", json.data.id);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Get Role by ID (GET /api/admin/roles/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/roles/{{roleId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'roles', '{{roleId}}'],
+            },
+          },
+        },
+        {
+          name: 'Update Role (PATCH /api/admin/roles/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  description:
+                    'Updated supervisor role permissions description',
+                  isActive: true,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/roles/{{roleId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'roles', '{{roleId}}'],
+            },
+          },
         },
         {
           name: 'List Permissions (GET /api/admin/permissions)',
@@ -3301,9 +4265,74 @@ const postmanCollection: Record<string, unknown> = {
               path: ['api', 'admin', 'permissions'],
             },
           },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.length > 0) {',
+                  '  pm.environment.set("permissionKey", json.data[0].key);',
+                  '}',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Replace Role Permissions (PUT /api/admin/roles/:id/permissions)',
+          request: {
+            method: 'PUT',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  permissionKeys: [
+                    'catalog.categories.read',
+                    'catalog.brands.read',
+                    'orders.read',
+                  ],
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/roles/{{roleId}}/permissions',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'roles', '{{roleId}}', 'permissions'],
+            },
+          },
+        },
+        {
+          name: 'Remove Single Role Permission (DELETE /api/admin/roles/:id/permissions/:permissionKey)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/roles/{{roleId}}/permissions/{{permissionKey}}',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'roles',
+                '{{roleId}}',
+                'permissions',
+                '{{permissionKey}}',
+              ],
+            },
+          },
         },
       ],
     },
+
+    // 4. Categories
     {
       name: '4. Categories',
       item: [
@@ -3372,8 +4401,59 @@ const postmanCollection: Record<string, unknown> = {
             },
           ],
         },
+        {
+          name: 'Admin Get Category by ID (GET /api/admin/categories/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/categories/{{categoryId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'categories', '{{categoryId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Category (PATCH /api/admin/categories/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  description: 'Premium curated single malt scotch selection',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/categories/{{categoryId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'categories', '{{categoryId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Delete Category (DELETE /api/admin/categories/:id)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/categories/{{categoryId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'categories', '{{categoryId}}'],
+            },
+          },
+        },
       ],
     },
+
+    // 5. Brands (With Reordering)
     {
       name: '5. Brands (With Reordering)',
       item: [
@@ -3385,6 +4465,18 @@ const postmanCollection: Record<string, unknown> = {
               raw: '{{baseUrl}}/api/catalog/brands',
               host: ['{{baseUrl}}'],
               path: ['api', 'catalog', 'brands'],
+            },
+          },
+        },
+        {
+          name: 'Admin List Brands (GET /api/admin/brands)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/brands',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'brands'],
             },
           },
         },
@@ -3430,6 +4522,43 @@ const postmanCollection: Record<string, unknown> = {
           ],
         },
         {
+          name: 'Admin Get Brand by ID (GET /api/admin/brands/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/brands/{{brandId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'brands', '{{brandId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Brand (PATCH /api/admin/brands/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  description: 'Speyside single malt scotch whisky distillery',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/brands/{{brandId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'brands', '{{brandId}}'],
+            },
+          },
+        },
+        {
           name: 'Admin Reorder Brands (PUT /api/admin/brands/reorder)',
           request: {
             method: 'PUT',
@@ -3465,8 +4594,22 @@ const postmanCollection: Record<string, unknown> = {
             },
           ],
         },
+        {
+          name: 'Admin Delete Brand (DELETE /api/admin/brands/:id)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/brands/{{brandId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'brands', '{{brandId}}'],
+            },
+          },
+        },
       ],
     },
+
+    // 6. Products & Variants
     {
       name: '6. Products & Variants',
       item: [
@@ -3478,6 +4621,29 @@ const postmanCollection: Record<string, unknown> = {
               raw: '{{baseUrl}}/api/catalog/products',
               host: ['{{baseUrl}}'],
               path: ['api', 'catalog', 'products'],
+            },
+          },
+        },
+        {
+          name: 'Public Get Product by ID or Slug (GET /api/catalog/products/:id)',
+          request: {
+            method: 'GET',
+            url: {
+              raw: '{{baseUrl}}/api/catalog/products/{{productId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'catalog', 'products', '{{productId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin List Products (GET /api/admin/products)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/products',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'products'],
             },
           },
         },
@@ -3526,6 +4692,43 @@ const postmanCollection: Record<string, unknown> = {
           ],
         },
         {
+          name: 'Admin Get Product by ID (GET /api/admin/products/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'products', '{{productId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Product (PATCH /api/admin/products/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  description: 'Aged in American and European sherry oak casks',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'products', '{{productId}}'],
+            },
+          },
+        },
+        {
           name: 'Admin Create Variant (POST /api/admin/products/:id/variants)',
           request: {
             method: 'POST',
@@ -3569,8 +4772,211 @@ const postmanCollection: Record<string, unknown> = {
             },
           ],
         },
+        {
+          name: 'Admin List Product Variants (GET /api/admin/products/:id/variants)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}/variants',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'products', '{{productId}}', 'variants'],
+            },
+          },
+        },
+        {
+          name: 'Admin Get Single Variant (GET /api/admin/products/:id/variants/:variantId)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}/variants/{{variantId}}',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'products',
+                '{{productId}}',
+                'variants',
+                '{{variantId}}',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Variant (PATCH /api/admin/products/:id/variants/:variantId)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  sellingPrice: 15900,
+                  lowStockThreshold: 8,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}/variants/{{variantId}}',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'products',
+                '{{productId}}',
+                'variants',
+                '{{variantId}}',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Admin List Product Images (GET /api/admin/products/:id/images)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}/images',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'products', '{{productId}}', 'images'],
+            },
+          },
+        },
+        {
+          name: 'Admin Create Product Image (POST /api/admin/products/:id/images)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  imageUrl:
+                    'https://res.cloudinary.com/demo/image/upload/sample_bottle.jpg',
+                  publicId: 'liquor_shop/products/sample_bottle',
+                  altText: 'Macallan 12 Double Cask Front View',
+                  sortOrder: 0,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}/images',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'products', '{{productId}}', 'images'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201", () => pm.response.to.have.status(201));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.id) pm.environment.set("imageId", json.data.id);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin Update Product Image (PATCH /api/admin/products/:id/images/:imageId)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  altText: 'Macallan 12 Double Cask Premium Gift Box',
+                  sortOrder: 1,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}/images/{{imageId}}',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'products',
+                '{{productId}}',
+                'images',
+                '{{imageId}}',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Admin Delete Product Image (DELETE /api/admin/products/:id/images/:imageId)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}/images/{{imageId}}',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'products',
+                '{{productId}}',
+                'images',
+                '{{imageId}}',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Admin Deactivate Variant (DELETE /api/admin/products/:id/variants/:variantId)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}/variants/{{variantId}}',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'products',
+                '{{productId}}',
+                'variants',
+                '{{variantId}}',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Admin Deactivate Product (DELETE /api/admin/products/:id)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/products/{{productId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'products', '{{productId}}'],
+            },
+          },
+        },
       ],
     },
+
+    // 7. Inventory Management
     {
       name: '7. Inventory Management',
       item: [
@@ -3626,8 +5032,63 @@ const postmanCollection: Record<string, unknown> = {
             },
           },
         },
+        {
+          name: 'Adjust Variant Stock (POST /api/admin/inventory/variants/:variantId/adjustments)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  quantityDelta: 20,
+                  type: 'RESTOCK',
+                  reason: 'Stock shipment received for variant',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/inventory/variants/{{variantId}}/adjustments',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'inventory',
+                'variants',
+                '{{variantId}}',
+                'adjustments',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Get Variant Stock Level (GET /api/admin/inventory/variants/:variantId/stock)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/inventory/variants/{{variantId}}/stock',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'inventory',
+                'variants',
+                '{{variantId}}',
+                'stock',
+              ],
+            },
+          },
+        },
       ],
     },
+
+    // 8. Guest Cart & Checkout Flow
     {
       name: '8. Guest Cart & Checkout Flow',
       item: [
@@ -3679,7 +5140,26 @@ const postmanCollection: Record<string, unknown> = {
           },
         },
         {
-          name: '3. Execute Checkout (POST /api/checkout)',
+          name: '3. Update Cart Item Quantity (PATCH /api/cart/items/:variantId)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'X-Cart-Id', value: '{{cartToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ quantity: 2 }, null, 2),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/cart/items/{{variantId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'cart', 'items', '{{variantId}}'],
+            },
+          },
+        },
+        {
+          name: '4. Execute Checkout (POST /api/checkout)',
           request: {
             method: 'POST',
             header: [
@@ -3695,6 +5175,10 @@ const postmanCollection: Record<string, unknown> = {
                     phone: '+977-9841234567',
                     deliveryAddress: 'House 12, Thamel, Kathmandu',
                     email: 'prakash@example.test',
+                    coordinates: {
+                      latitude: 27.7172,
+                      longitude: 85.324,
+                    },
                   },
                   paymentMethodCode: 'CASH_ON_DELIVERY',
                 },
@@ -3726,7 +5210,7 @@ const postmanCollection: Record<string, unknown> = {
           ],
         },
         {
-          name: '4. Public Order Lookup (GET /api/orders/:orderNumber)',
+          name: '5. Public Order Lookup (GET /api/orders/:orderNumber)',
           request: {
             method: 'GET',
             header: [{ key: 'x-order-token', value: '{{orderLookupToken}}' }],
@@ -3748,8 +5232,34 @@ const postmanCollection: Record<string, unknown> = {
             },
           ],
         },
+        {
+          name: '6. Remove Single Cart Item (DELETE /api/cart/items/:variantId)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'X-Cart-Id', value: '{{cartToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/cart/items/{{variantId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'cart', 'items', '{{variantId}}'],
+            },
+          },
+        },
+        {
+          name: '7. Clear Entire Cart (DELETE /api/cart)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'X-Cart-Id', value: '{{cartToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/cart',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'cart'],
+            },
+          },
+        },
       ],
     },
+
+    // 9. Payment Methods & QR Proof Verification
     {
       name: '9. Payment Methods & QR Proof Verification',
       item: [
@@ -3761,6 +5271,146 @@ const postmanCollection: Record<string, unknown> = {
               raw: '{{baseUrl}}/api/payment-methods',
               host: ['{{baseUrl}}'],
               path: ['api', 'payment-methods'],
+            },
+          },
+        },
+        {
+          name: 'Admin List Payment Methods (GET /api/admin/payment-methods)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/payment-methods',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'payment-methods'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.length > 0 && !pm.environment.get("paymentMethodId")) {',
+                  '  pm.environment.set("paymentMethodId", json.data[0].id);',
+                  '}',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin Create Payment Method (POST /api/admin/payment-methods)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  code: 'FONEPAY_QR_' + Date.now(),
+                  type: 'STATIC_QR',
+                  name: 'FonePay QR Payment',
+                  description:
+                    'Scan and pay using any Nepali mobile banking app',
+                  providerLabel: 'FonePay',
+                  accountName: 'Old Liquor Store Pvt Ltd',
+                  accountNumber: '01234567890123',
+                  qrImageUrl:
+                    'https://res.cloudinary.com/demo/image/upload/sample_qr.png',
+                  instructions: 'Scan QR and enter Order Number in remarks',
+                  displayOrder: 2,
+                  isActive: true,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/payment-methods',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'payment-methods'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201", () => pm.response.to.have.status(201));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.id) pm.environment.set("paymentMethodId", json.data.id);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin Get Payment Method by ID (GET /api/admin/payment-methods/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/payment-methods/{{paymentMethodId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'payment-methods', '{{paymentMethodId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Payment Method (PATCH /api/admin/payment-methods/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  instructions:
+                    'Scan QR code and upload screenshot payment proof slip below',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/payment-methods/{{paymentMethodId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'payment-methods', '{{paymentMethodId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Set Payment Method Status (PATCH /api/admin/payment-methods/:id/status)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ isActive: true }, null, 2),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/payment-methods/{{paymentMethodId}}/status',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'payment-methods',
+                '{{paymentMethodId}}',
+                'status',
+              ],
             },
           },
         },
@@ -3804,6 +5454,55 @@ const postmanCollection: Record<string, unknown> = {
           ],
         },
         {
+          name: 'Submit Payment Proof via Multipart Upload (POST /api/orders/:orderNumber/payment-proof)',
+          request: {
+            method: 'POST',
+            header: [
+              {
+                key: 'X-Order-Lookup-Token',
+                value: '{{orderLookupToken}}',
+              },
+            ],
+            body: {
+              mode: 'formdata',
+              formdata: [
+                {
+                  key: 'file',
+                  type: 'file',
+                  src: 'receipt_sample.png',
+                  description: 'Screenshot receipt (JPEG, PNG, WebP up to 5MB)',
+                },
+                {
+                  key: 'transactionReference',
+                  value: 'FPAY-TX-123456',
+                  type: 'text',
+                },
+                {
+                  key: 'customerNotes',
+                  value: 'Payment transferred via Mobile Banking',
+                  type: 'text',
+                },
+              ],
+            },
+            url: {
+              raw: '{{baseUrl}}/api/orders/{{orderNumber}}/payment-proof',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'orders', '{{orderNumber}}', 'payment-proof'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201", () => pm.response.to.have.status(201));',
+                ],
+              },
+            },
+          ],
+        },
+        {
           name: 'Admin List Payment Submissions (GET /api/admin/payment-submissions)',
           request: {
             method: 'GET',
@@ -3812,6 +5511,23 @@ const postmanCollection: Record<string, unknown> = {
               raw: '{{baseUrl}}/api/admin/payment-submissions',
               host: ['{{baseUrl}}'],
               path: ['api', 'admin', 'payment-submissions'],
+            },
+          },
+        },
+        {
+          name: 'Admin Get Payment Submission by ID (GET /api/admin/payment-submissions/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/payment-submissions/{{paymentSubmissionId}}',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'payment-submissions',
+                '{{paymentSubmissionId}}',
+              ],
             },
           },
         },
@@ -3844,8 +5560,73 @@ const postmanCollection: Record<string, unknown> = {
             },
           ],
         },
+        {
+          name: 'Admin Reject Payment Submission (POST /api/admin/payment-submissions/:id/reject)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  reason:
+                    'Transaction reference does not match merchant statement',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/payment-submissions/{{paymentSubmissionId}}/reject',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'payment-submissions',
+                '{{paymentSubmissionId}}',
+                'reject',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Admin Unified Review Payment Submission (POST /api/admin/payment-submissions/:id/review)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  action: 'APPROVE',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/payment-submissions/{{paymentSubmissionId}}/review',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'payment-submissions',
+                '{{paymentSubmissionId}}',
+                'review',
+              ],
+            },
+          },
+        },
       ],
     },
+
+    // 10. Order Management & Status Transitions
     {
       name: '10. Order Management & Status Transitions',
       item: [
@@ -3858,6 +5639,30 @@ const postmanCollection: Record<string, unknown> = {
               raw: '{{baseUrl}}/api/admin/orders',
               host: ['{{baseUrl}}'],
               path: ['api', 'admin', 'orders'],
+            },
+          },
+        },
+        {
+          name: 'Get Order by ID (GET /api/admin/orders/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/orders/{{orderNumber}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'orders', '{{orderNumber}}'],
+            },
+          },
+        },
+        {
+          name: 'Get Order Status History (GET /api/admin/orders/:id/history)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/orders/{{orderNumber}}/history',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'orders', '{{orderNumber}}', 'history'],
             },
           },
         },
@@ -3887,8 +5692,36 @@ const postmanCollection: Record<string, unknown> = {
             },
           },
         },
+        {
+          name: 'Download Order Tax Invoice (GET /api/admin/orders/:id/invoice)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/orders/{{orderNumber}}/invoice',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'orders', '{{orderNumber}}', 'invoice'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'pm.test("Content-Type is application/pdf", () => {',
+                  '  pm.expect(pm.response.headers.get("Content-Type")).to.include("application/pdf");',
+                  '});',
+                ],
+              },
+            },
+          ],
+        },
       ],
     },
+
+    // 11. Dashboard & Analytics
     {
       name: '11. Dashboard & Analytics',
       item: [
@@ -3918,6 +5751,18 @@ const postmanCollection: Record<string, unknown> = {
           },
         },
         {
+          name: 'Order Status Breakdown (GET /api/admin/dashboard/order-status-breakdown)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/dashboard/order-status-breakdown',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'dashboard', 'order-status-breakdown'],
+            },
+          },
+        },
+        {
           name: 'Best Selling Products (GET /api/admin/dashboard/top-products)',
           request: {
             method: 'GET',
@@ -3929,8 +5774,22 @@ const postmanCollection: Record<string, unknown> = {
             },
           },
         },
+        {
+          name: 'Dashboard Low Stock Summary (GET /api/admin/dashboard/low-stock)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/dashboard/low-stock',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'dashboard', 'low-stock'],
+            },
+          },
+        },
       ],
     },
+
+    // 12. Customers Management
     {
       name: '12. Customers Management',
       item: [
@@ -3940,14 +5799,63 @@ const postmanCollection: Record<string, unknown> = {
             method: 'GET',
             header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
             url: {
-              raw: '{{baseUrl}}/api/admin/customers',
+              raw: '{{baseUrl}}/api/admin/customers?page=1&limit=20',
               host: ['{{baseUrl}}'],
               path: ['api', 'admin', 'customers'],
+              query: [
+                { key: 'page', value: '1' },
+                { key: 'limit', value: '20' },
+              ],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.items && json.data.items.length > 0) {',
+                  '  pm.environment.set("customerId", json.data.items[0].id);',
+                  '}',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Get Customer by ID (GET /api/admin/customers/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/customers/{{customerId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'customers', '{{customerId}}'],
+            },
+          },
+        },
+        {
+          name: 'Get Customer Order History (GET /api/admin/customers/:id/orders)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/customers/{{customerId}}/orders?page=1&limit=20',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'customers', '{{customerId}}', 'orders'],
+              query: [
+                { key: 'page', value: '1' },
+                { key: 'limit', value: '20' },
+              ],
             },
           },
         },
       ],
     },
+
+    // 13. Banners (With Reordering)
     {
       name: '13. Banners (With Reordering)',
       item: [
@@ -3959,6 +5867,18 @@ const postmanCollection: Record<string, unknown> = {
               raw: '{{baseUrl}}/api/banners',
               host: ['{{baseUrl}}'],
               path: ['api', 'banners'],
+            },
+          },
+        },
+        {
+          name: 'Admin List Banners (GET /api/admin/banners)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/banners',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'banners'],
             },
           },
         },
@@ -4006,6 +5926,62 @@ const postmanCollection: Record<string, unknown> = {
           ],
         },
         {
+          name: 'Admin Get Banner by ID (GET /api/admin/banners/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/banners/{{bannerId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'banners', '{{bannerId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Banner (PATCH /api/admin/banners/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  title: 'Holiday Spirits Flash Sale',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/banners/{{bannerId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'banners', '{{bannerId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Set Banner Status (PATCH /api/admin/banners/:id/status)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ isActive: true }, null, 2),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/banners/{{bannerId}}/status',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'banners', '{{bannerId}}', 'status'],
+            },
+          },
+        },
+        {
           name: 'Admin Reorder Banners (PUT /api/admin/banners/reorder)',
           request: {
             method: 'PUT',
@@ -4041,8 +6017,22 @@ const postmanCollection: Record<string, unknown> = {
             },
           ],
         },
+        {
+          name: 'Admin Delete Banner (DELETE /api/admin/banners/:id)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/banners/{{bannerId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'banners', '{{bannerId}}'],
+            },
+          },
+        },
       ],
     },
+
+    // 14. Gallery
     {
       name: '14. Gallery',
       item: [
@@ -4057,8 +6047,134 @@ const postmanCollection: Record<string, unknown> = {
             },
           },
         },
+        {
+          name: 'Admin List Gallery (GET /api/admin/gallery)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/gallery',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'gallery'],
+            },
+          },
+        },
+        {
+          name: 'Admin Create Gallery Item (POST /api/admin/gallery)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  title: 'Wine Cellar Collection',
+                  description: 'Premium cellar reserve collection showroom',
+                  imageUrl:
+                    'https://res.cloudinary.com/demo/image/upload/sample_gallery.jpg',
+                  category: 'CELLAR',
+                  displayOrder: 1,
+                  isActive: true,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/gallery',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'gallery'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201", () => pm.response.to.have.status(201));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.id) pm.environment.set("galleryId", json.data.id);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin Get Gallery Item by ID (GET /api/admin/gallery/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/gallery/{{galleryId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'gallery', '{{galleryId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Gallery Item (PATCH /api/admin/gallery/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  title: 'Vintage Reserve Wine Cellar',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/gallery/{{galleryId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'gallery', '{{galleryId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Set Gallery Item Status (PATCH /api/admin/gallery/:id/status)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ isActive: true }, null, 2),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/gallery/{{galleryId}}/status',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'gallery', '{{galleryId}}', 'status'],
+            },
+          },
+        },
+        {
+          name: 'Admin Delete Gallery Item (DELETE /api/admin/gallery/:id)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/gallery/{{galleryId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'gallery', '{{galleryId}}'],
+            },
+          },
+        },
       ],
     },
+
+    // 15. Store Settings
     {
       name: '15. Store Settings',
       item: [
@@ -4085,8 +6201,56 @@ const postmanCollection: Record<string, unknown> = {
             },
           },
         },
+        {
+          name: 'Admin Update Store Settings (PATCH /api/admin/settings)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  storeOriginLatitude: 27.7172,
+                  storeOriginLongitude: 85.324,
+                  deliveryFeeMode: 'PER_KM',
+                  deliveryFeeBaseAmount: 100,
+                  deliveryFeePerKmAmount: 25,
+                  deliveryFeeFreeThreshold: 5000,
+                  hasExplicitDeliveryFeeFreeThreshold: true,
+                  deliveryMaxDistanceKm: 25,
+                  deliveryFallbackAmount: 0,
+                  isOrderingEnabled: true,
+                  orderingMessage: null,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/settings',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'settings'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                ],
+              },
+            },
+          ],
+        },
       ],
     },
+
+    // 16. Social Media
     {
       name: '16. Social Media',
       item: [
@@ -4112,8 +6276,184 @@ const postmanCollection: Record<string, unknown> = {
             },
           },
         },
+        {
+          name: 'Public List Profile Handles Grouped (GET /api/social-media/profiles)',
+          request: {
+            method: 'GET',
+            url: {
+              raw: '{{baseUrl}}/api/social-media/profiles',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'social-media', 'profiles'],
+            },
+          },
+        },
+        {
+          name: 'Admin List Social Media (GET /api/admin/social-media)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/social-media',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'social-media'],
+            },
+          },
+        },
+        {
+          name: 'Admin Create Social Media Item (POST /api/admin/social-media)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  platform: 'instagram',
+                  url: 'https://instagram.com/oldliquorshop',
+                  type: 'profile',
+                  label: '@oldliquorshop',
+                  displayOrder: 1,
+                  isActive: true,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/social-media',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'social-media'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201", () => pm.response.to.have.status(201));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.id) pm.environment.set("socialMediaId", json.data.id);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin Create Batch Social Media (POST /api/admin/social-media/batch)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  entries: [
+                    {
+                      platform: 'facebook',
+                      url: 'https://facebook.com/oldliquornepal',
+                      type: 'profile',
+                      label: 'Old Liquor Nepal',
+                      displayOrder: 2,
+                      isActive: true,
+                    },
+                  ],
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/social-media/batch',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'social-media', 'batch'],
+            },
+          },
+        },
+        {
+          name: 'Admin Get Social Media by ID (GET /api/admin/social-media/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/social-media/{{socialMediaId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'social-media', '{{socialMediaId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Social Media (PATCH /api/admin/social-media/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  label: 'Official Old Liquor Instagram',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/social-media/{{socialMediaId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'social-media', '{{socialMediaId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Set Social Media Status (PATCH /api/admin/social-media/:id/status)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ isActive: true }, null, 2),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/social-media/{{socialMediaId}}/status',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'social-media',
+                '{{socialMediaId}}',
+                'status',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Admin Delete Social Media (DELETE /api/admin/social-media/:id)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/social-media/{{socialMediaId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'social-media', '{{socialMediaId}}'],
+            },
+          },
+        },
       ],
     },
+
+    // 17. Promo Codes
     {
       name: '17. Promo Codes',
       item: [
@@ -4148,8 +6488,155 @@ const postmanCollection: Record<string, unknown> = {
             },
           },
         },
+        {
+          name: 'Admin List Promo Codes (GET /api/admin/promo-codes)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/promo-codes',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'promo-codes'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.length > 0 && !pm.environment.get("promoCodeId")) {',
+                  '  pm.environment.set("promoCodeId", json.data[0].id);',
+                  '}',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin Create Promo Code (POST /api/admin/promo-codes)',
+          request: {
+            method: 'POST',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  code: 'FESTIVE' + Math.floor(Math.random() * 1000),
+                  description: 'Festive season promotional discount',
+                  discountType: 'PERCENTAGE',
+                  discountValue: 15,
+                  minimumOrderAmount: 1000,
+                  maxDiscountAmount: 500,
+                  isActive: true,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/promo-codes',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'promo-codes'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201", () => pm.response.to.have.status(201));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.id) pm.environment.set("promoCodeId", json.data.id);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin Get Promo Code by ID (GET /api/admin/promo-codes/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/promo-codes/{{promoCodeId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'promo-codes', '{{promoCodeId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Promo Code (PATCH /api/admin/promo-codes/:id)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  maxDiscountAmount: 600,
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/promo-codes/{{promoCodeId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'promo-codes', '{{promoCodeId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Set Promo Code Status (PATCH /api/admin/promo-codes/:id/status)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ isActive: true }, null, 2),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/promo-codes/{{promoCodeId}}/status',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'promo-codes',
+                '{{promoCodeId}}',
+                'status',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Admin Delete Promo Code (DELETE /api/admin/promo-codes/:id)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/promo-codes/{{promoCodeId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'promo-codes', '{{promoCodeId}}'],
+            },
+          },
+        },
       ],
     },
+
+    // 18. Negative Cases & Forbidden Reorder Endpoints
     {
       name: '18. Negative Cases & Forbidden Reorder Endpoints',
       item: [
@@ -4285,6 +6772,398 @@ const postmanCollection: Record<string, unknown> = {
         },
       ],
     },
+
+    // 19. Newsletter Subscriptions & Admin Management
+    {
+      name: '19. Newsletter Subscriptions & Admin Management',
+      item: [
+        {
+          name: '1. Public Subscribe to Newsletter (POST /api/newsletter/subscribe)',
+          request: {
+            method: 'POST',
+            header: [{ key: 'Content-Type', value: 'application/json' }],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                { email: 'newsletter.guest@example.test' },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/newsletter/subscribe',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'newsletter', 'subscribe'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201", () => pm.response.to.have.status(201));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.id) pm.environment.set("subscriberId", json.data.id);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: '2. Public Unsubscribe from Newsletter (POST /api/newsletter/unsubscribe)',
+          request: {
+            method: 'POST',
+            header: [{ key: 'Content-Type', value: 'application/json' }],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                { email: 'newsletter.guest@example.test' },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/newsletter/unsubscribe',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'newsletter', 'unsubscribe'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: '3. Admin List All Subscribers (GET /api/admin/newsletter/subscribers)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/newsletter/subscribers',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'newsletter', 'subscribers'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.length > 0 && json.data[0].id) {',
+                  '  pm.environment.set("subscriberId", json.data[0].id);',
+                  '}',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: '4. Admin List Active Subscribers (GET /api/admin/newsletter/subscribers/active)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/newsletter/subscribers/active',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'newsletter', 'subscribers', 'active'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: '5. Admin Delete Subscriber (DELETE /api/admin/newsletter/subscribers/:id)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/newsletter/subscribers/{{subscriberId}}',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'newsletter',
+                'subscribers',
+                '{{subscriberId}}',
+              ],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    },
+
+    // 20. Contact Inquiries
+    {
+      name: '20. Contact Inquiries',
+      item: [
+        {
+          name: 'Public Submit Contact Inquiry (POST /api/contact)',
+          request: {
+            method: 'POST',
+            header: [{ key: 'Content-Type', value: 'application/json' }],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  name: 'Ram Shrestha',
+                  phone: '+977-9841112233',
+                  email: 'ram@example.test',
+                  subject: 'Inquiry regarding bulk corporate whisky purchase',
+                  message:
+                    'Hello, do you offer wholesale rates for corporate events of 50+ bottles?',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/contact',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'contact'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201", () => pm.response.to.have.status(201));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.id) pm.environment.set("inquiryId", json.data.id);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin List Contact Inquiries (GET /api/admin/contact-inquiries)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/contact-inquiries?page=1&limit=20',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'contact-inquiries'],
+              query: [
+                { key: 'page', value: '1' },
+                { key: 'limit', value: '20' },
+              ],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.items && json.data.items.length > 0 && !pm.environment.get("inquiryId")) {',
+                  '  pm.environment.set("inquiryId", json.data.items[0].id);',
+                  '}',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin Get Contact Inquiry by ID (GET /api/admin/contact-inquiries/:id)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/contact-inquiries/{{inquiryId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'contact-inquiries', '{{inquiryId}}'],
+            },
+          },
+        },
+        {
+          name: 'Admin Update Inquiry Status (PATCH /api/admin/contact-inquiries/:id/status)',
+          request: {
+            method: 'PATCH',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify(
+                {
+                  status: 'IN_PROGRESS',
+                  adminNote: 'Sales rep assigned to call customer',
+                },
+                null,
+                2,
+              ),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/contact-inquiries/{{inquiryId}}/status',
+              host: ['{{baseUrl}}'],
+              path: [
+                'api',
+                'admin',
+                'contact-inquiries',
+                '{{inquiryId}}',
+                'status',
+              ],
+            },
+          },
+        },
+        {
+          name: 'Admin Delete Contact Inquiry (DELETE /api/admin/contact-inquiries/:id)',
+          request: {
+            method: 'DELETE',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/contact-inquiries/{{inquiryId}}',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'contact-inquiries', '{{inquiryId}}'],
+            },
+          },
+        },
+      ],
+    },
+
+    // 21. Media Uploads & Reference Safety
+    {
+      name: '21. Media Uploads & Reference Safety',
+      item: [
+        {
+          name: 'Admin Upload Media Asset (POST /api/admin/media/upload)',
+          request: {
+            method: 'POST',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            body: {
+              mode: 'formdata',
+              formdata: [
+                {
+                  key: 'file',
+                  type: 'file',
+                  src: 'product_bottle_sample.png',
+                  description: 'Image binary up to 5 MB',
+                },
+                {
+                  key: 'purpose',
+                  value: 'PRODUCT_IMAGE',
+                  type: 'text',
+                  description:
+                    'PRODUCT_IMAGE, PAYMENT_QR, BANNER_IMAGE, or GALLERY_IMAGE',
+                },
+              ],
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/media/upload',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'media', 'upload'],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 201 or 400", () => pm.expect([201, 400]).to.include(pm.response.code));',
+                  'var json = pm.response.json();',
+                  'if (json.data && json.data.publicId) pm.environment.set("mediaPublicId", json.data.publicId);',
+                ],
+              },
+            },
+          ],
+        },
+        {
+          name: 'Admin Delete Media Asset (DELETE /api/admin/media)',
+          request: {
+            method: 'DELETE',
+            header: [
+              { key: 'Authorization', value: 'Bearer {{adminToken}}' },
+              { key: 'Content-Type', value: 'application/json' },
+            ],
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ publicId: '{{mediaPublicId}}' }, null, 2),
+            },
+            url: {
+              raw: '{{baseUrl}}/api/admin/media',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'media'],
+            },
+          },
+        },
+      ],
+    },
+
+    // 22. Audit Logs
+    {
+      name: '22. Audit Logs',
+      item: [
+        {
+          name: 'Admin List Audit Logs (GET /api/admin/audit-logs)',
+          request: {
+            method: 'GET',
+            header: [{ key: 'Authorization', value: 'Bearer {{adminToken}}' }],
+            url: {
+              raw: '{{baseUrl}}/api/admin/audit-logs?page=1&pageSize=20',
+              host: ['{{baseUrl}}'],
+              path: ['api', 'admin', 'audit-logs'],
+              query: [
+                { key: 'page', value: '1' },
+                { key: 'pageSize', value: '20' },
+              ],
+            },
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'pm.test("Status is 200", () => pm.response.to.have.status(200));',
+                  'pm.test("Audit logs returned with items array", () => {',
+                  '  var json = pm.response.json();',
+                  '  pm.expect(json.data).to.be.an("object");',
+                  '  pm.expect(json.data.items).to.be.an("array");',
+                  '});',
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    },
   ],
 };
 
@@ -4311,6 +7190,9 @@ const postmanEnv = {
       enabled: true,
     },
     { key: 'adminToken', value: '', type: 'secret', enabled: true },
+    { key: 'adminUserId', value: '', type: 'default', enabled: true },
+    { key: 'roleId', value: '', type: 'default', enabled: true },
+    { key: 'permissionKey', value: '', type: 'default', enabled: true },
     { key: 'cartToken', value: '', type: 'default', enabled: true },
     { key: 'orderNumber', value: '', type: 'default', enabled: true },
     { key: 'orderLookupToken', value: '', type: 'secret', enabled: true },
@@ -4318,12 +7200,17 @@ const postmanEnv = {
     { key: 'brandId', value: '', type: 'default', enabled: true },
     { key: 'productId', value: '', type: 'default', enabled: true },
     { key: 'variantId', value: '', type: 'default', enabled: true },
+    { key: 'imageId', value: '', type: 'default', enabled: true },
     { key: 'bannerId', value: '', type: 'default', enabled: true },
     { key: 'galleryId', value: '', type: 'default', enabled: true },
     { key: 'socialMediaId', value: '', type: 'default', enabled: true },
     { key: 'paymentMethodId', value: '', type: 'default', enabled: true },
     { key: 'paymentSubmissionId', value: '', type: 'default', enabled: true },
     { key: 'promoCodeId', value: '', type: 'default', enabled: true },
+    { key: 'customerId', value: '', type: 'default', enabled: true },
+    { key: 'inquiryId', value: '', type: 'default', enabled: true },
+    { key: 'mediaPublicId', value: '', type: 'default', enabled: true },
+    { key: 'subscriberId', value: '', type: 'default', enabled: true },
   ],
   _postman_variable_scope: 'environment',
 };

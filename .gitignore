@@ -19,3 +19,4 @@ secrets/
 *.backup
 *.sql.gz
 .DS_Store
+temp/

@@ -21,6 +21,7 @@
     "db:generate": "prisma generate --schema prisma/schema.prisma",
     "admin:provision:initial": "tsx scripts/provision-initial-admin.ts",
     "notifications:worker": "tsx scripts/notification-worker.ts",
+    "notifications:preview": "tsx scripts/preview-email-templates.ts",
     "db:migrate": "prisma migrate deploy --schema prisma/schema.prisma",
     "db:migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
     "db:seed:sample": "tsx scripts/seed-sample-catalog.ts"
@@ -37,6 +38,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.4.0",
     "nodemailer": "^10.1.0",
+    "pdfkit": "^0.20.2",
     "pino": "^9.7.0",
     "pino-http": "^10.5.0",
     "zod": "^4.4.3"
@@ -49,6 +51,7 @@
     "@types/multer": "^2.3.0",
     "@types/node": "^22.19.0",
     "@types/nodemailer": "^8.0.2",
+    "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^6.0.3",
     "eslint": "^9.39.0",
     "eslint-config-prettier": "^10.1.8",

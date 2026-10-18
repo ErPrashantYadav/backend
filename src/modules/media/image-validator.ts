@@ -60,7 +60,7 @@ export function validateImageBuffer(
     throw new AppError(
       400,
       'INVALID_UPLOAD_PURPOSE',
-      `Upload purpose must be PRODUCT_IMAGE or PAYMENT_QR`,
+      `Upload purpose must be one of: ${Object.keys(UPLOAD_PURPOSE_CONFIG).join(', ')}`,
     );
   }
 
@@ -77,9 +77,14 @@ export function validateImageBuffer(
   // Check declared MIME type
   const normalizedMime = mimeType.trim().toLowerCase();
   if (!config.allowedMimeTypes.includes(normalizedMime)) {
+    const statusCode = purpose === 'PAYMENT_PROOF' ? 400 : 415;
+    const errorCode =
+      purpose === 'PAYMENT_PROOF'
+        ? 'INVALID_IMAGE_CONTENT'
+        : 'UNSUPPORTED_MEDIA_TYPE';
     throw new AppError(
-      415,
-      'UNSUPPORTED_MEDIA_TYPE',
+      statusCode,
+      errorCode,
       `MIME type '${mimeType}' is not allowed. Allowed types: ${config.allowedMimeTypes.join(', ')}`,
     );
   }

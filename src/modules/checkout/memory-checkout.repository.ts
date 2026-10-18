@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { AppError } from '../../errors/app-error';
+import { normalizeCustomerPhone } from '../../utils/phone';
 import type { CartRepository } from '../cart/cart.types';
 import type { InventoryMovementRecord } from '../inventory/inventory.types';
 import type { MemoryVariantItem } from '../inventory/memory-inventory.repository';
@@ -24,6 +25,7 @@ export interface MemoryCustomerRecord {
 export class MemoryCheckoutRepository implements CheckoutRepository {
   orders: OrderSnapshot[] = [];
   customers: MemoryCustomerRecord[] = [];
+  acquiredLocks: string[] = [];
 
   constructor(
     public variants: MemoryVariantItem[] = [],
@@ -142,17 +144,43 @@ export class MemoryCheckoutRepository implements CheckoutRepository {
     }
 
     const orderId = crypto.randomUUID();
-    const customerId = crypto.randomUUID();
-    const customerRecord: MemoryCustomerRecord = {
-      id: customerId,
-      name: params.customer.name,
-      phone: params.customer.phone,
-      deliveryAddress: params.customer.deliveryAddress,
-      email: params.customer.email || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.customers.push(customerRecord);
+    const normalizedPhone = normalizeCustomerPhone(params.customer.phone);
+    const trimmedPhone = params.customer.phone.trim();
+
+    // Track simulated transaction-level advisory lock on normalized phone
+    this.acquiredLocks.push(`liquor_customer:${normalizedPhone}`);
+
+    const existingCustomer = this.customers.find(
+      (c) =>
+        normalizeCustomerPhone(c.phone) === normalizedPhone ||
+        c.phone === trimmedPhone,
+    );
+
+    let customerId: string;
+    if (existingCustomer) {
+      customerId = existingCustomer.id;
+      existingCustomer.name = params.customer.name.trim();
+      existingCustomer.deliveryAddress = params.customer.deliveryAddress.trim();
+      existingCustomer.phone = normalizedPhone;
+      if (params.customer.email && params.customer.email.trim()) {
+        existingCustomer.email = params.customer.email.trim().toLowerCase();
+      }
+      existingCustomer.updatedAt = new Date();
+    } else {
+      customerId = crypto.randomUUID();
+      const customerRecord: MemoryCustomerRecord = {
+        id: customerId,
+        name: params.customer.name.trim(),
+        phone: normalizedPhone,
+        deliveryAddress: params.customer.deliveryAddress.trim(),
+        email: params.customer.email
+          ? params.customer.email.trim().toLowerCase()
+          : null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.customers.push(customerRecord);
+    }
 
     const order: OrderSnapshot = {
       id: orderId,
@@ -211,10 +239,16 @@ export class MemoryCheckoutRepository implements CheckoutRepository {
     }
 
     if (this.notificationOutboxService) {
-      await this.notificationOutboxService.enqueueOrderCreatedWhatsApp({
+      const notificationSnapshot = {
         ...order,
         items: params.items,
-      });
+      };
+      await this.notificationOutboxService.enqueueOrderCreatedWhatsApp(
+        notificationSnapshot,
+      );
+      await this.notificationOutboxService.enqueueOrderCreatedAdminEmail(
+        notificationSnapshot,
+      );
     }
 
     if (params.cartIdToClear && this.cartRepository) {

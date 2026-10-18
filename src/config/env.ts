@@ -112,6 +112,11 @@ const environmentSchema = z
       .trim()
       .min(1)
       .default('liquor_shop/gallery'),
+    CLOUDINARY_PAYMENT_PROOF_FOLDER: z
+      .string()
+      .trim()
+      .min(1)
+      .default('liquor_shop/payment_proofs'),
     GOOGLE_MAPS_API_KEY: z.string().trim().min(1).optional(),
     STORE_ORIGIN_LATITUDE: z.coerce.number().min(-90).max(90).default(27.7172),
     STORE_ORIGIN_LONGITUDE: z.coerce
@@ -140,6 +145,16 @@ const environmentSchema = z
       .trim()
       .min(1)
       .default('Old Liquor <orders@oldliquor.com>'),
+    STORE_ORDER_NOTIFICATION_EMAIL: z
+      .string()
+      .trim()
+      .email('Invalid STORE_ORDER_NOTIFICATION_EMAIL format')
+      .optional(),
+    STORE_CONTACT_NOTIFICATION_EMAIL: z
+      .string()
+      .trim()
+      .email('Invalid STORE_CONTACT_NOTIFICATION_EMAIL format')
+      .optional(),
     SMTP_HOST: z.string().trim().min(1).optional(),
     SMTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
     SMTP_USER: z.string().trim().min(1).optional(),
@@ -181,7 +196,15 @@ export function loadConfig(
   environment:
     NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
 ): AppConfig {
-  const result = environmentSchema.safeParse(environment);
+  const normalizedEnvironment: Record<string, string | undefined> = {
+    ...environment,
+    STORE_ORIGIN_LATITUDE:
+      environment.STORE_ORIGIN_LATITUDE ?? environment.STORE_ORIGIN_LAT,
+    STORE_ORIGIN_LONGITUDE:
+      environment.STORE_ORIGIN_LONGITUDE ?? environment.STORE_ORIGIN_LNG,
+  };
+
+  const result = environmentSchema.safeParse(normalizedEnvironment);
   if (!result.success) {
     const problems = result.error.issues
       .map(

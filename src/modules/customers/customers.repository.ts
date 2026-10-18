@@ -55,6 +55,7 @@ export class PrismaCustomerRepository implements CustomerRepository {
             id: true,
             total: true,
             status: true,
+            paymentStatus: true,
             createdAt: true,
           },
         },
@@ -62,7 +63,12 @@ export class PrismaCustomerRepository implements CustomerRepository {
     });
 
     const items: CustomerListItem[] = customers.map((c) => {
-      const validOrders = c.orders.filter((o) => o.status !== 'CANCELLED');
+      const validOrders = c.orders.filter(
+        (o) =>
+          o.status !== 'CANCELLED' &&
+          o.status !== 'RETURNED' &&
+          o.paymentStatus !== 'REFUNDED',
+      );
       const totalSpentDecimal = validOrders.reduce(
         (sum, o) => sum.plus(new Prisma.Decimal(o.total)),
         new Prisma.Decimal(0),
@@ -134,6 +140,7 @@ export class PrismaCustomerRepository implements CustomerRepository {
       select: {
         total: true,
         status: true,
+        paymentStatus: true,
         createdAt: true,
       },
     });
@@ -168,7 +175,11 @@ export class PrismaCustomerRepository implements CustomerRepository {
         pendingOrderCount++;
       }
 
-      if (o.status !== 'CANCELLED') {
+      if (
+        o.status !== 'CANCELLED' &&
+        o.status !== 'RETURNED' &&
+        o.paymentStatus !== 'REFUNDED'
+      ) {
         totalSpentDecimal = totalSpentDecimal.plus(new Prisma.Decimal(o.total));
       }
     }

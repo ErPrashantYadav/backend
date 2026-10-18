@@ -77,6 +77,7 @@ describe('Store Settings & Business Hours (Task 31)', () => {
       expect(res.body.data.address).toBe('Kathmandu, Nepal');
       expect(res.body.data.city).toBe('Kathmandu');
       expect(res.body.data.timezone).toBe('Asia/Kathmandu');
+      expect(res.body.data.minOrderSubtotal).toBe('800.00');
       expect(Array.isArray(res.body.data.businessHours)).toBe(true);
       expect(res.body.data.businessHours.length).toBe(7);
 

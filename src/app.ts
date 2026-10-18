@@ -83,9 +83,18 @@ import {
   PrismaMediaReferenceChecker,
   MemoryMediaReferenceChecker,
 } from './modules/media/media-reference-checker';
-import type { RoutingProvider } from './modules/routing/routing.types';
-import { GoogleMapsRoutingProvider } from './modules/routing/google-maps.provider';
-import { MemoryRoutingProvider } from './modules/routing/memory-routing.provider';
+import type {
+  GeocodingProvider,
+  RoutingProvider,
+} from './modules/routing/routing.types';
+import {
+  GoogleMapsGeocodingProvider,
+  GoogleMapsRoutingProvider,
+} from './modules/routing/google-maps.provider';
+import {
+  MemoryGeocodingProvider,
+  MemoryRoutingProvider,
+} from './modules/routing/memory-routing.provider';
 import { RoutingService } from './modules/routing/routing.service';
 import type { DeliveryFeePolicy } from './modules/delivery/delivery-fee.types';
 import { ConfigurableDeliveryFeePolicy } from './modules/delivery/delivery-fee.policy';
@@ -162,6 +171,14 @@ import {
   createPublicSocialMediaRouter,
   createPublicSocialMediaLinkRouter,
 } from './modules/social-media/social-media.routes';
+import { PrismaNewsletterRepository } from './modules/newsletter/newsletter.repository';
+import { MemoryNewsletterRepository } from './modules/newsletter/memory-newsletter.repository';
+import { NewsletterService } from './modules/newsletter/newsletter.service';
+import type { NewsletterRepository } from './modules/newsletter/newsletter.types';
+import {
+  createAdminNewsletterRouter,
+  createPublicNewsletterRouter,
+} from './modules/newsletter/newsletter.routes';
 import { createErrorHandler } from './middleware/error-handler';
 
 import { notFoundHandler } from './middleware/not-found';
@@ -206,10 +223,13 @@ export interface AppDependencies {
   storeSettingsService?: StoreSettingsService;
   socialMediaRepository?: SocialMediaRepository;
   socialMediaService?: SocialMediaService;
+  newsletterRepository?: NewsletterRepository;
+  newsletterService?: NewsletterService;
   cloudinaryClient?: CloudinaryClient;
 
   cloudinaryService?: CloudinaryService;
   routingProvider?: RoutingProvider;
+  geocodingProvider?: GeocodingProvider;
   routingService?: RoutingService;
   deliveryFeePolicy?: DeliveryFeePolicy;
   deliveryFeeEstimator?: DeliveryFeeEstimator;
@@ -414,6 +434,21 @@ export function createApp(
     createPublicPromoCodeRouter(promoCodeRepository, promoCodeService),
   );
 
+  const storeSettingsRepository =
+    dependencies.storeSettingsRepository ??
+    (isMemoryMode
+      ? new MemoryStoreSettingsRepository(undefined, config)
+      : new PrismaStoreSettingsRepository());
+  const storeSettingsService =
+    dependencies.storeSettingsService ??
+    new StoreSettingsService(storeSettingsRepository, auditService, config);
+
+  const geocodingProvider =
+    dependencies.geocodingProvider ??
+    (config.GOOGLE_MAPS_API_KEY && !isMemoryMode
+      ? new GoogleMapsGeocodingProvider(config.GOOGLE_MAPS_API_KEY)
+      : new MemoryGeocodingProvider());
+
   const routingProvider =
     dependencies.routingProvider ??
     (config.GOOGLE_MAPS_API_KEY && !isMemoryMode
@@ -444,7 +479,13 @@ export function createApp(
 
   const deliveryFeeEstimator =
     dependencies.deliveryFeeEstimator ??
-    new RoutingDeliveryFeeEstimator(routingService, deliveryFeePolicy);
+    new RoutingDeliveryFeeEstimator(
+      routingService,
+      deliveryFeePolicy,
+      'NPR',
+      false,
+      storeSettingsRepository,
+    );
 
   const notificationOutboxRepository =
     dependencies.notificationOutboxRepository ??
@@ -468,6 +509,9 @@ export function createApp(
       config.STORE_OWNER_WHATSAPP_NUMBER,
       config.EMAIL_FROM,
       logger,
+      config.STORE_ORDER_NOTIFICATION_EMAIL,
+      config.STORE_CONTACT_NOTIFICATION_EMAIL,
+      storeSettingsRepository,
     );
 
   const cartRepository =
@@ -510,6 +554,8 @@ export function createApp(
     paymentMethodRepository,
     promoCodeRepository,
     promoCodeService,
+    storeSettingsRepository,
+    geocodingProvider,
   );
 
   app.use('/api/cart', createCartRouter(cartRepository, productRepository));
@@ -523,6 +569,9 @@ export function createApp(
       deliveryFeeEstimator,
       promoCodeRepository,
       promoCodeService,
+      storeSettingsRepository,
+      geocodingProvider,
+      checkoutService,
     ),
   );
   const orderLookupLimiter = rateLimit({
@@ -588,16 +637,9 @@ export function createApp(
     paymentMethodRepository,
     logger,
     auditService,
+    config,
   );
 
-  app.use(
-    '/api/orders',
-    createPublicPaymentSubmissionRouter(paymentSubmissionService),
-  );
-  app.use(
-    '/api/checkout/orders',
-    createPublicPaymentSubmissionRouter(paymentSubmissionService),
-  );
   app.use(
     '/api/admin/payment-submissions',
     createAdminPaymentSubmissionRouter(authService, paymentSubmissionService),
@@ -649,7 +691,11 @@ export function createApp(
 
   app.use(
     '/api/admin/orders',
-    createAdminOrderManagementRouter(authService, orderManagementService),
+    createAdminOrderManagementRouter(
+      authService,
+      orderManagementService,
+      storeSettingsRepository,
+    ),
   );
   app.use(
     '/api/admin/audit-logs',
@@ -693,7 +739,11 @@ export function createApp(
       : new PrismaContactInquiryRepository());
   const contactInquiryService =
     dependencies.contactInquiryService ??
-    new ContactInquiryService(contactInquiryRepository, auditService);
+    new ContactInquiryService(
+      contactInquiryRepository,
+      auditService,
+      notificationOutboxService,
+    );
 
   app.use(
     '/api/contact',
@@ -742,21 +792,20 @@ export function createApp(
     createAdminGalleryRouter(authService, galleryService),
   );
 
-  const storeSettingsRepository =
-    dependencies.storeSettingsRepository ??
-    (isMemoryMode
-      ? new MemoryStoreSettingsRepository()
-      : new PrismaStoreSettingsRepository());
-  const storeSettingsService =
-    dependencies.storeSettingsService ??
-    new StoreSettingsService(storeSettingsRepository, auditService);
-
   app.use(
     '/api/settings',
     createPublicStoreSettingsRouter(storeSettingsService),
   );
   app.use(
+    '/api/store-settings',
+    createPublicStoreSettingsRouter(storeSettingsService),
+  );
+  app.use(
     '/api/admin/settings',
+    createAdminStoreSettingsRouter(authService, storeSettingsService),
+  );
+  app.use(
+    '/api/admin/store-settings',
     createAdminStoreSettingsRouter(authService, storeSettingsService),
   );
 
@@ -780,6 +829,21 @@ export function createApp(
   app.use(
     '/api/admin/social-media',
     createAdminSocialMediaRouter(authService, socialMediaService),
+  );
+
+  const newsletterRepository =
+    dependencies.newsletterRepository ??
+    (isMemoryMode
+      ? new MemoryNewsletterRepository()
+      : new PrismaNewsletterRepository());
+  const newsletterService =
+    dependencies.newsletterService ??
+    new NewsletterService(newsletterRepository, auditService, logger);
+
+  app.use('/api/newsletter', createPublicNewsletterRouter(newsletterService));
+  app.use(
+    '/api/admin/newsletter',
+    createAdminNewsletterRouter(authService, newsletterService),
   );
 
   const cloudinaryClient =
@@ -817,6 +881,20 @@ export function createApp(
       logger,
     );
 
+  app.use(
+    '/api/orders',
+    createPublicPaymentSubmissionRouter(
+      paymentSubmissionService,
+      cloudinaryService,
+    ),
+  );
+  app.use(
+    '/api/checkout/orders',
+    createPublicPaymentSubmissionRouter(
+      paymentSubmissionService,
+      cloudinaryService,
+    ),
+  );
   app.use(
     '/api/admin/media',
     createAdminMediaRouter(authService, cloudinaryService),

@@ -238,7 +238,7 @@ describe('Task 22: Google Maps Routing & Configurable Delivery Fee Foundation', 
     });
   });
 
-  describe('GoogleMapsRoutingProvider', () => {
+  describe('GoogleMapsRoutingProvider (Routes API)', () => {
     it('rejects initialization with empty or whitespace-only API key', () => {
       expect(() => new GoogleMapsRoutingProvider('')).toThrow(
         /Google Maps API key is required/,
@@ -248,25 +248,29 @@ describe('Task 22: Google Maps Routing & Configurable Delivery Fee Foundation', 
       );
     });
 
-    it('returns normalized distance in meters and duration in seconds on successful API response', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          status: 'OK',
-          rows: [
-            {
-              elements: [
-                {
-                  status: 'OK',
-                  distance: { value: 7420, text: '7.4 km' },
-                  duration: { value: 1350, text: '23 mins' },
-                },
-              ],
-            },
-          ],
-        }),
-      });
+    it('sends correct POST request with X-Goog-FieldMask and X-Goog-Api-Key headers and returns parsed distance and duration', async () => {
+      let capturedUrl = '';
+      let capturedOptions: RequestInit | undefined;
+
+      const mockFetch = vi
+        .fn()
+        .mockImplementation((url: string, options: RequestInit) => {
+          capturedUrl = url;
+          capturedOptions = options;
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => [
+              {
+                originIndex: 0,
+                destinationIndex: 0,
+                condition: 'ROUTE_EXISTS',
+                distanceMeters: 7420,
+                duration: '1350s',
+              },
+            ],
+          });
+        });
 
       vi.stubGlobal('fetch', mockFetch);
 
@@ -279,25 +283,42 @@ describe('Task 22: Google Maps Routing & Configurable Delivery Fee Foundation', 
       expect(result.distanceMeters).toBe(7420);
       expect(result.durationSeconds).toBe(1350);
 
+      expect(capturedUrl).toBe(
+        'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',
+      );
+      expect(capturedOptions?.method).toBe('POST');
+      const headers = capturedOptions?.headers as Record<string, string>;
+      expect(headers['X-Goog-Api-Key']).toBe('mock-key-12345');
+      expect(headers['X-Goog-FieldMask']).toBe(
+        'originIndex,destinationIndex,status,condition,distanceMeters,duration',
+      );
+      expect(headers['Content-Type']).toBe('application/json');
+
+      const body = JSON.parse(capturedOptions?.body as string);
+      expect(body.origins[0].waypoint.location.latLng).toEqual({
+        latitude: 27.7172,
+        longitude: 85.324,
+      });
+      expect(body.destinations[0].waypoint.location.latLng).toEqual({
+        latitude: 27.73,
+        longitude: 85.34,
+      });
+      expect(body.travelMode).toBe('DRIVE');
+
       vi.unstubAllGlobals();
     });
 
-    it('handles ZERO_RESULTS / NOT_FOUND by throwing ROUTE_NOT_FOUND (404)', async () => {
+    it('handles condition ROUTE_NOT_FOUND by throwing ROUTE_NOT_FOUND (404)', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        json: async () => ({
-          status: 'OK',
-          rows: [
-            {
-              elements: [
-                {
-                  status: 'ZERO_RESULTS',
-                },
-              ],
-            },
-          ],
-        }),
+        json: async () => [
+          {
+            originIndex: 0,
+            destinationIndex: 0,
+            condition: 'ROUTE_NOT_FOUND',
+          },
+        ],
       });
 
       vi.stubGlobal('fetch', mockFetch);
@@ -318,13 +339,46 @@ describe('Task 22: Google Maps Routing & Configurable Delivery Fee Foundation', 
       vi.unstubAllGlobals();
     });
 
-    it('handles OVER_QUERY_LIMIT with 429 ROUTING_RATE_LIMITED', async () => {
+    it('handles element status NOT_FOUND (code 5) by throwing ROUTE_NOT_FOUND (404)', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
+        json: async () => [
+          {
+            originIndex: 0,
+            destinationIndex: 0,
+            status: {
+              code: 5,
+              message: 'NOT_FOUND: No route exists',
+            },
+          },
+        ],
+      });
+
+      vi.stubGlobal('fetch', mockFetch);
+
+      const provider = new GoogleMapsRoutingProvider('mock-key-12345');
+      await expect(
+        provider.getRoute(
+          { latitude: 27.7172, longitude: 85.324 },
+          { latitude: 27.9, longitude: 86.5 },
+        ),
+      ).rejects.toThrowError(
+        expect.objectContaining({
+          statusCode: 404,
+          code: 'ROUTE_NOT_FOUND',
+        }),
+      );
+
+      vi.unstubAllGlobals();
+    });
+
+    it('handles HTTP 429 rate limiting with ROUTING_RATE_LIMITED (429)', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
         json: async () => ({
-          status: 'OVER_QUERY_LIMIT',
-          error_message: 'Daily quota reached',
+          error: { code: 429, message: 'Resource exhausted' },
         }),
       });
 
@@ -340,6 +394,145 @@ describe('Task 22: Google Maps Routing & Configurable Delivery Fee Foundation', 
         expect.objectContaining({
           statusCode: 429,
           code: 'ROUTING_RATE_LIMITED',
+        }),
+      );
+
+      vi.unstubAllGlobals();
+    });
+
+    it('handles element status code 8 (RESOURCE_EXHAUSTED) with ROUTING_RATE_LIMITED (429)', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            originIndex: 0,
+            destinationIndex: 0,
+            status: {
+              code: 8,
+              message: 'RESOURCE_EXHAUSTED',
+            },
+          },
+        ],
+      });
+
+      vi.stubGlobal('fetch', mockFetch);
+
+      const provider = new GoogleMapsRoutingProvider('mock-key-12345');
+      await expect(
+        provider.getRoute(
+          { latitude: 27.7172, longitude: 85.324 },
+          { latitude: 27.72, longitude: 85.33 },
+        ),
+      ).rejects.toThrowError(
+        expect.objectContaining({
+          statusCode: 429,
+          code: 'ROUTING_RATE_LIMITED',
+        }),
+      );
+
+      vi.unstubAllGlobals();
+    });
+
+    it('handles HTTP 403 request denied by provider with ROUTING_PROVIDER_ERROR (502)', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: async () => ({
+          error: { code: 403, message: 'Requests denied' },
+        }),
+      });
+
+      vi.stubGlobal('fetch', mockFetch);
+
+      const provider = new GoogleMapsRoutingProvider('mock-key-12345');
+      await expect(
+        provider.getRoute(
+          { latitude: 27.7172, longitude: 85.324 },
+          { latitude: 27.72, longitude: 85.33 },
+        ),
+      ).rejects.toThrowError(
+        expect.objectContaining({
+          statusCode: 502,
+          code: 'ROUTING_PROVIDER_ERROR',
+        }),
+      );
+
+      vi.unstubAllGlobals();
+    });
+
+    it('handles malformed responses gracefully with 502 error', async () => {
+      // Empty array response
+      const mockFetch1 = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => [],
+      });
+
+      vi.stubGlobal('fetch', mockFetch1);
+      const provider = new GoogleMapsRoutingProvider('mock-key-12345');
+      await expect(
+        provider.getRoute(
+          { latitude: 27.7172, longitude: 85.324 },
+          { latitude: 27.72, longitude: 85.33 },
+        ),
+      ).rejects.toThrowError(
+        expect.objectContaining({
+          statusCode: 502,
+          code: 'ROUTING_PROVIDER_ERROR',
+        }),
+      );
+
+      // Missing distance/duration
+      const mockFetch2 = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            originIndex: 0,
+            destinationIndex: 0,
+            condition: 'ROUTE_EXISTS',
+          },
+        ],
+      });
+
+      vi.stubGlobal('fetch', mockFetch2);
+      await expect(
+        provider.getRoute(
+          { latitude: 27.7172, longitude: 85.324 },
+          { latitude: 27.72, longitude: 85.33 },
+        ),
+      ).rejects.toThrowError(
+        expect.objectContaining({
+          statusCode: 502,
+          code: 'ROUTING_PROVIDER_ERROR',
+        }),
+      );
+
+      // Malformed duration unit
+      const mockFetch3 = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            originIndex: 0,
+            destinationIndex: 0,
+            distanceMeters: 5000,
+            duration: 'invalid-duration',
+          },
+        ],
+      });
+
+      vi.stubGlobal('fetch', mockFetch3);
+      await expect(
+        provider.getRoute(
+          { latitude: 27.7172, longitude: 85.324 },
+          { latitude: 27.72, longitude: 85.33 },
+        ),
+      ).rejects.toThrowError(
+        expect.objectContaining({
+          statusCode: 502,
+          code: 'ROUTING_PROVIDER_ERROR',
         }),
       );
 
@@ -625,6 +818,35 @@ describe('Task 22: Google Maps Routing & Configurable Delivery Fee Foundation', 
           code: 'COORDINATES_REQUIRED',
         }),
       );
+    });
+
+    it('returns configured fallbackAmount fee when requireCoordinates=false and coordinates are omitted', async () => {
+      const routingProvider = new MemoryRoutingProvider();
+      const service = new RoutingService(routingProvider);
+      const policy = new ConfigurableDeliveryFeePolicy({
+        mode: 'PER_KM',
+        baseAmount: 100,
+        perKmAmount: 25,
+        maxDistanceKm: 25,
+        fallbackAmount: 75,
+      });
+
+      const estimator = new RoutingDeliveryFeeEstimator(
+        service,
+        policy,
+        'NPR',
+        false, // requireCoordinates=false
+      );
+
+      const result = await estimator.estimateFee({
+        address: 'Baluwatar, Kathmandu',
+        coordinates: undefined,
+        subtotal: '1500.00',
+      });
+
+      expect(result.fee).toBe('75.00');
+      expect(result.distanceMeters).toBeUndefined();
+      expect(result.durationSeconds).toBeUndefined();
     });
   });
 

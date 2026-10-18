@@ -18,7 +18,7 @@ The Liquor Shop Backend provides a centralized, secure media management service 
 | `GALLERY_IMAGE` | `CLOUDINARY_GALLERY_FOLDER`<br>(default: `liquor_shop/gallery`)       | **8 MB** (Validator)<br>_(Multer limit: 5 MB)_ | JPEG, PNG, WebP<br>(`image/jpeg`, `image/png`, `image/webp`) | `gallery.create`<br>OR `gallery.update`<br>OR `media.upload`                               |
 
 > [!IMPORTANT]
-> **Customer Payment Proof Slips**: Customer bank receipts are **NOT** uploaded via `/api/admin/media/upload`. Guests submit proof references via public `POST /api/payments/:orderNumber/payment-proof` with their order lookup token. The backend does not expose unauthenticated binary upload endpoints, preventing unauthorized asset hosting and storage exhaustion.
+> **Customer Payment Proof Slips**: Customer bank receipts are **NOT** uploaded via `/api/admin/media/upload`. Guests submit proof screenshots or references via public `POST /api/orders/:orderNumber/payment-proof` with their order lookup token. Proof uploads accept multipart form data (up to 5 MB, validated against JPEG/PNG/WebP signatures) or pre-uploaded Cloudinary URLs. Unauthenticated binary upload without order tokens is strictly rejected.
 
 ---
 
@@ -387,5 +387,5 @@ Attempting to delete assets outside the designated folders (e.g. `{"publicId": "
 Customer payment slips contain sensitive personal data (e.g. customer name, bank account numbers, transaction reference numbers).
 
 - **Never upload customer bank slips as public catalog images, banners, or gallery items.**
-- Customer proofs are strictly attached to orders via `POST /api/payments/:orderNumber/payment-proof` and can only be reviewed by authorized administrators (`payment-submissions.read`).
+- Customer proofs are strictly attached to orders via `POST /api/orders/:orderNumber/payment-proof` and can only be reviewed by authorized administrators (`payment-submissions.read`).
 - Even after order fulfillment or cancellation, customer payment receipts are permanent financial evidence and are **never deleted from Cloudinary**.

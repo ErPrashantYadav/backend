@@ -110,6 +110,10 @@
     {
       "name": "Media Uploads",
       "description": "Cloudinary media upload and reference-safe deletion"
+    },
+    {
+      "name": "Newsletter",
+      "description": "Public newsletter subscriptions and administrative subscriber management"
     }
   ],
   "components": {
@@ -580,6 +584,7 @@
               },
               "deliveryAddress": {
                 "type": "string",
+                "nullable": true,
                 "example": "House 42, Thamel Ward 26, Kathmandu"
               },
               "email": {
@@ -590,20 +595,25 @@
               },
               "coordinates": {
                 "type": "object",
-                "nullable": true,
+                "description": "Customer delivery GPS coordinates (required for delivery checkout)",
                 "properties": {
                   "latitude": {
                     "type": "number",
+                    "minimum": -90,
+                    "maximum": 90,
                     "example": 27.7172
                   },
                   "longitude": {
                     "type": "number",
+                    "minimum": -180,
+                    "maximum": 180,
                     "example": 85.324
                   }
-                }
+                },
+                "required": ["latitude", "longitude"]
               }
             },
-            "required": ["name", "phone", "deliveryAddress"]
+            "required": ["name", "phone", "coordinates"]
           },
           "cartId": {
             "type": "string",
@@ -952,6 +962,182 @@
               }
             }
           },
+          "announcement": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "text": {
+                "type": "string",
+                "example": "Same-day delivery available across Kathmandu valley until 9 PM."
+              },
+              "active": {
+                "type": "boolean",
+                "example": true
+              }
+            },
+            "required": ["text", "active"]
+          },
+          "minOrderSubtotal": {
+            "type": "string",
+            "example": "800.00",
+            "description": "Storewide minimum merchandise subtotal required for checkout"
+          },
+          "storeOriginLatitude": {
+            "type": "number",
+            "nullable": true,
+            "example": 27.7172,
+            "description": "Store dispatch base latitude for delivery routing"
+          },
+          "storeOriginLongitude": {
+            "type": "number",
+            "nullable": true,
+            "example": 85.324,
+            "description": "Store dispatch base longitude for delivery routing"
+          },
+          "deliveryPricing": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["FIXED", "PER_KM", "TIERED"],
+                "example": "PER_KM"
+              },
+              "baseAmount": {
+                "type": "string",
+                "example": "100.00"
+              },
+              "perKmAmount": {
+                "type": "string",
+                "example": "25.00"
+              },
+              "freeDeliveryThreshold": {
+                "type": "string",
+                "nullable": true,
+                "example": "5000.00"
+              },
+              "maxDistanceKm": {
+                "type": "string",
+                "example": "25.00"
+              },
+              "fallbackAmount": {
+                "type": "string",
+                "example": "0.00"
+              }
+            },
+            "required": [
+              "mode",
+              "baseAmount",
+              "perKmAmount",
+              "maxDistanceKm",
+              "fallbackAmount"
+            ]
+          },
+          "isOrderingEnabled": {
+            "type": "boolean",
+            "example": true,
+            "description": "Master switch enabling/disabling customer order placement"
+          },
+          "orderingMessage": {
+            "type": "string",
+            "nullable": true,
+            "example": null,
+            "description": "Customer announcement when ordering is paused"
+          }
+        },
+        "required": [
+          "storeName",
+          "primaryPhone",
+          "supportEmail",
+          "address",
+          "city",
+          "timezone",
+          "minOrderSubtotal",
+          "deliveryPricing",
+          "isOrderingEnabled"
+        ]
+      },
+      "AdminStoreSettings": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "default"
+          },
+          "storeName": {
+            "type": "string",
+            "example": "Old Liquor Shop"
+          },
+          "storeTagline": {
+            "type": "string",
+            "nullable": true,
+            "example": "Premium Wines & Spirits in Kathmandu"
+          },
+          "primaryPhone": {
+            "type": "string",
+            "example": "+977-9841234567"
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+977-1-4412345"
+          },
+          "supportEmail": {
+            "type": "string",
+            "format": "email",
+            "example": "support@oldliquor.com"
+          },
+          "address": {
+            "type": "string",
+            "example": "Tridevi Marg, Thamel Ward 26"
+          },
+          "city": {
+            "type": "string",
+            "example": "Kathmandu"
+          },
+          "locationUrl": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true,
+            "example": "https://maps.google.com/?q=27.7172,85.3240"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Asia/Kathmandu"
+          },
+          "businessHours": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string",
+                  "enum": [
+                    "MONDAY",
+                    "TUESDAY",
+                    "WEDNESDAY",
+                    "THURSDAY",
+                    "FRIDAY",
+                    "SATURDAY",
+                    "SUNDAY"
+                  ]
+                },
+                "isOpen": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "openTime": {
+                  "type": "string",
+                  "nullable": true,
+                  "example": "10:00"
+                },
+                "closeTime": {
+                  "type": "string",
+                  "nullable": true,
+                  "example": "22:00"
+                }
+              }
+            }
+          },
           "announcementText": {
             "type": "string",
             "nullable": true,
@@ -970,6 +1156,63 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "storeOriginLatitude": {
+            "type": "number",
+            "nullable": true,
+            "example": 27.7172
+          },
+          "storeOriginLongitude": {
+            "type": "number",
+            "nullable": true,
+            "example": 85.324
+          },
+          "deliveryFeeMode": {
+            "type": "string",
+            "enum": ["FIXED", "PER_KM", "TIERED"],
+            "example": "PER_KM"
+          },
+          "deliveryFeeBaseAmount": {
+            "type": "string",
+            "example": "100.00"
+          },
+          "deliveryFeePerKmAmount": {
+            "type": "string",
+            "example": "25.00"
+          },
+          "deliveryFeeFreeThreshold": {
+            "type": "string",
+            "nullable": true,
+            "example": "5000.00"
+          },
+          "hasExplicitDeliveryFeeFreeThreshold": {
+            "type": "boolean",
+            "example": false
+          },
+          "deliveryMaxDistanceKm": {
+            "type": "string",
+            "example": "25.00"
+          },
+          "deliveryFallbackAmount": {
+            "type": "string",
+            "example": "0.00"
+          },
+          "isOrderingEnabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "orderingMessage": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -978,7 +1221,227 @@
           "supportEmail",
           "address",
           "city",
-          "timezone"
+          "timezone",
+          "deliveryFeeMode",
+          "deliveryFeeBaseAmount",
+          "deliveryFeePerKmAmount",
+          "hasExplicitDeliveryFeeFreeThreshold",
+          "deliveryMaxDistanceKm",
+          "deliveryFallbackAmount",
+          "isOrderingEnabled"
+        ]
+      },
+      "UpdateStoreSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "storeName": {
+            "type": "string"
+          },
+          "storeTagline": {
+            "type": "string",
+            "nullable": true
+          },
+          "primaryPhone": {
+            "type": "string"
+          },
+          "secondaryPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportEmail": {
+            "type": "string",
+            "format": "email"
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "locationUrl": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "businessHours": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string",
+                  "enum": [
+                    "MONDAY",
+                    "TUESDAY",
+                    "WEDNESDAY",
+                    "THURSDAY",
+                    "FRIDAY",
+                    "SATURDAY",
+                    "SUNDAY"
+                  ]
+                },
+                "isOpen": {
+                  "type": "boolean"
+                },
+                "openTime": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "closeTime": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "announcementText": {
+            "type": "string",
+            "nullable": true
+          },
+          "announcementActive": {
+            "type": "boolean"
+          },
+          "announcementStartDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "announcementEndDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "storeOriginLatitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "nullable": true
+          },
+          "storeOriginLongitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "nullable": true
+          },
+          "deliveryFeeMode": {
+            "type": "string",
+            "enum": ["FIXED", "PER_KM", "TIERED"]
+          },
+          "deliveryFeeBaseAmount": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "deliveryFeePerKmAmount": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "deliveryFeeFreeThreshold": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "nullable": true
+          },
+          "hasExplicitDeliveryFeeFreeThreshold": {
+            "type": "boolean",
+            "description": "Whether free delivery threshold has been explicitly set in settings (overriding env fallback)"
+          },
+          "deliveryMaxDistanceKm": {
+            "oneOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "deliveryFallbackAmount": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "isOrderingEnabled": {
+            "type": "boolean"
+          },
+          "orderingMessage": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true
+          }
+        }
+      },
+      "NewsletterSubscriber": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "customer@example.com"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "subscribedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unsubscribedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "isActive",
+          "subscribedAt",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "SocialMediaItem": {
@@ -4014,6 +4477,129 @@
         }
       }
     },
+    "/api/admin/inventory/variants/{variantId}/adjustments": {
+      "post": {
+        "tags": ["Inventory"],
+        "summary": "Record variant stock adjustment via URL parameter",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "variantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "quantityDelta": {
+                    "type": "integer",
+                    "example": 10
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "RESTOCK",
+                      "DAMAGE",
+                      "RETURN_RESTOCK",
+                      "CORRECTION",
+                      "INTERNAL_USE"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "example": "Variant restock received"
+                  }
+                },
+                "required": ["quantityDelta", "type", "reason"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/inventory/variants/{variantId}/stock": {
+      "get": {
+        "tags": ["Inventory"],
+        "summary": "Get variant current stock level",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "variantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cart": {
       "get": {
         "tags": ["Cart"],
@@ -4271,6 +4857,7 @@
       "post": {
         "tags": ["Checkout & Orders"],
         "summary": "Place order via guest checkout",
+        "description": "Places a guest customer order with server-side validation.\nEnforces:\n- Minimum merchandise subtotal of NPR 800.00 (MINIMUM_ORDER_SUBTOTAL_NOT_MET)\n- Customer delivery GPS coordinates (COORDINATES_REQUIRED, INVALID_COORDINATES)\n- Delivery distance validation and max radius limit (MAX_DISTANCE_EXCEEDED)\n- Ordering pause switch and business hours schedule (ORDERING_PAUSED, STORE_CLOSED)",
         "parameters": [
           {
             "name": "X-Cart-Id",
@@ -4321,19 +4908,11 @@
             }
           },
           "400": {
-            "description": "Insufficient stock or inactive variant",
+            "description": "Checkout business rule or validation error (MINIMUM_ORDER_SUBTOTAL_NOT_MET, COORDINATES_REQUIRED, INVALID_COORDINATES, MAX_DISTANCE_EXCEEDED, ORDERING_PAUSED, STORE_CLOSED, INSUFFICIENT_STOCK)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
-                },
-                "example": {
-                  "success": false,
-                  "error": {
-                    "code": "INSUFFICIENT_STOCK",
-                    "message": "Insufficient stock or inactive variant",
-                    "requestId": "req-20261012-001"
-                  }
                 }
               }
             }
@@ -4692,7 +5271,8 @@
     "/api/orders/{orderNumber}/payment-proof": {
       "post": {
         "tags": ["Payment Submissions"],
-        "summary": "Submit payment proof for order",
+        "summary": "Submit payment proof for order (multipart file upload or JSON URL)",
+        "description": "Upload bank transfer or QR payment proof screenshot. Accepts multipart/form-data with image file up to 5MB, or application/json with Cloudinary URL. Requires valid guest order lookup token.",
         "parameters": [
           {
             "name": "orderNumber",
@@ -4700,19 +5280,57 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Order number (e.g. ORD-20261012-A1B2C3)"
+          },
+          {
+            "name": "X-Order-Lookup-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Guest order lookup token (can also be passed in body or token query param)"
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Payment slip screenshot (JPEG, PNG, WebP up to 5MB)"
+                  },
+                  "transactionReference": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Bank or wallet transaction reference ID"
+                  },
+                  "customerNotes": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Optional customer note"
+                  },
+                  "orderLookupToken": {
+                    "type": "string",
+                    "description": "Guest order lookup token if not supplied via header"
+                  }
+                },
+                "required": ["file"]
+              }
+            },
             "application/json": {
               "schema": {
                 "type": "object",
                 "properties": {
                   "proofImageUrl": {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri",
+                    "description": "Direct Cloudinary URL of uploaded receipt"
                   },
                   "transactionReference": {
                     "type": "string",
@@ -4733,7 +5351,7 @@
         },
         "responses": {
           "201": {
-            "description": "Operation successful",
+            "description": "Payment proof submitted successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -4750,6 +5368,60 @@
                       }
                     }
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing proof image or file exceeds 5MB limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Missing proof image or file exceeds 5MB limit",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found or invalid lookup token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "ORDER_NOT_FOUND",
+                    "message": "Order not found or invalid lookup token",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many payment submission attempts; try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "Too many payment submission attempts; try again later",
+                    "requestId": "req-20261012-001"
+                  }
                 }
               }
             }
@@ -5134,6 +5806,116 @@
                       }
                     }
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/orders/{id}/invoice": {
+      "get": {
+        "tags": ["Order Management"],
+        "summary": "Download tax invoice PDF for order",
+        "description": "Generates and streams a deterministic PDF tax invoice containing itemized breakdown, customer info, delivery charges, VAT summary, and store credentials. Requires orders.read permission.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Order ID or order number (ORD-...)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tax invoice PDF binary stream",
+            "headers": {
+              "Content-Type": {
+                "schema": {
+                  "type": "string",
+                  "example": "application/pdf"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string",
+                  "example": "inline; filename=\"invoice-ORD-20261012-A1B2C3.pdf\""
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "integer",
+                  "example": 45678
+                }
+              }
+            },
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication token missing or invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Authentication token missing or invalid",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions (requires orders.read)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Insufficient permissions (requires orders.read)",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "ORDER_NOT_FOUND",
+                    "message": "Order not found",
+                    "requestId": "req-20261012-001"
+                  }
                 }
               }
             }
@@ -6718,7 +7500,7 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/StoreSettings"
+                          "$ref": "#/components/schemas/AdminStoreSettings"
                         }
                       }
                     }
@@ -6729,9 +7511,9 @@
           }
         }
       },
-      "patch": {
+      "put": {
         "tags": ["Store Settings"],
-        "summary": "Update store configuration, business hours, and announcement schedule",
+        "summary": "Update store configuration, business hours, GPS origin, and delivery pricing policy",
         "security": [
           {
             "BearerAuth": []
@@ -6742,7 +7524,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/UpdateStoreSettingsRequest"
               }
             }
           }
@@ -6761,7 +7543,50 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/StoreSettings"
+                          "$ref": "#/components/schemas/AdminStoreSettings"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Store Settings"],
+        "summary": "Partially update store configuration, business hours, GPS origin, and delivery pricing policy",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStoreSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AdminStoreSettings"
                         }
                       }
                     }
@@ -6823,10 +7648,40 @@
         }
       }
     },
+    "/api/social-media/profiles": {
+      "get": {
+        "tags": ["Social Media"],
+        "summary": "Public list profile handles grouped by platform key (canonical)",
+        "responses": {
+          "200": {
+            "description": "Operation successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/social-media-link": {
       "get": {
         "tags": ["Social Media"],
-        "summary": "Public list profile handles grouped by platform key",
+        "summary": "Public list profile handles grouped by platform key (alias)",
         "responses": {
           "200": {
             "description": "Operation successful",
@@ -7671,6 +8526,450 @@
                       }
                     }
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/newsletter/subscribe": {
+      "post": {
+        "tags": ["Newsletter"],
+        "summary": "Subscribe email to storefront newsletter",
+        "description": "Subscribes an email address to the newsletter. Rate-limited to 30 requests per 15 minutes per IP. Re-activates existing subscribers if previously unsubscribed.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "customer@example.com"
+                  }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully subscribed to newsletter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/NewsletterSubscriber"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Valid email address is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Valid email address is required",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many newsletter requests from this IP; please try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "Too many newsletter requests from this IP; please try again later",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/newsletter/unsubscribe": {
+      "post": {
+        "tags": ["Newsletter"],
+        "summary": "Unsubscribe email from storefront newsletter",
+        "description": "Marks a subscriber inactive. Rate-limited to 30 requests per 15 minutes per IP. Safe idempotency if email does not exist.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "customer@example.com"
+                  }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully unsubscribed from newsletter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "nullable": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Valid email address is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Valid email address is required",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many newsletter requests from this IP; please try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "Too many newsletter requests from this IP; please try again later",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/newsletter/subscribers": {
+      "get": {
+        "tags": ["Newsletter"],
+        "summary": "Admin list all newsletter subscribers",
+        "description": "Fetches all newsletter subscribers ordered by subscribedAt descending. Supports case-insensitive partial email search. Requires newsletter.read permission.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Case-insensitive search query matching subscriber email"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newsletter subscribers fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/NewsletterSubscriber"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication token missing or invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Authentication token missing or invalid",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions (requires newsletter.read)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Insufficient permissions (requires newsletter.read)",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/newsletter/subscribers/active": {
+      "get": {
+        "tags": ["Newsletter"],
+        "summary": "Admin list active newsletter subscribers",
+        "description": "Fetches only active newsletter subscribers ordered by subscribedAt descending. Supports case-insensitive partial email search. Requires newsletter.read permission.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Case-insensitive search query matching subscriber email"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active subscribers fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/NewsletterSubscriber"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication token missing or invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Authentication token missing or invalid",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions (requires newsletter.read)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Insufficient permissions (requires newsletter.read)",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/newsletter/subscribers/{id}": {
+      "delete": {
+        "tags": ["Newsletter"],
+        "summary": "Admin delete newsletter subscriber",
+        "description": "Permanently deletes a newsletter subscriber record by UUID and logs an immutable audit entry. Requires newsletter.delete permission.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Subscriber unique ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscriber deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "nullable": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication token missing or invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Authentication token missing or invalid",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions (requires newsletter.delete)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Insufficient permissions (requires newsletter.delete)",
+                    "requestId": "req-20261012-001"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscriber not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Subscriber not found",
+                    "requestId": "req-20261012-001"
+                  }
                 }
               }
             }

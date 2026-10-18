@@ -1,5 +1,8 @@
+import type { AppConfig } from '../../config/env';
 import {
   DEFAULT_STORE_SETTINGS,
+  TEST_BUSINESS_HOURS,
+  type DeliveryFeeMode,
   type StoreSettingsRecord,
   type StoreSettingsRepository,
   type UpdateStoreSettingsInput,
@@ -8,10 +11,66 @@ import {
 export class MemoryStoreSettingsRepository implements StoreSettingsRepository {
   public currentSettings: StoreSettingsRecord;
 
-  constructor(initialSettings?: Partial<StoreSettingsRecord>) {
+  constructor(
+    initialSettings?: Partial<StoreSettingsRecord>,
+    config?: Partial<AppConfig>,
+  ) {
     const now = new Date();
+    const defaultMode =
+      (config?.DELIVERY_FEE_MODE as DeliveryFeeMode | undefined) ??
+      DEFAULT_STORE_SETTINGS.deliveryFeeMode;
+    const defaultBase =
+      config?.DELIVERY_FEE_BASE_AMOUNT !== undefined
+        ? Number(config.DELIVERY_FEE_BASE_AMOUNT).toFixed(2)
+        : DEFAULT_STORE_SETTINGS.deliveryFeeBaseAmount;
+    const defaultPerKm =
+      config?.DELIVERY_FEE_PER_KM_AMOUNT !== undefined
+        ? Number(config.DELIVERY_FEE_PER_KM_AMOUNT).toFixed(2)
+        : DEFAULT_STORE_SETTINGS.deliveryFeePerKmAmount;
+    const defaultThreshold =
+      config?.DELIVERY_FEE_FREE_THRESHOLD !== undefined
+        ? Number(config.DELIVERY_FEE_FREE_THRESHOLD).toFixed(2)
+        : DEFAULT_STORE_SETTINGS.deliveryFeeFreeThreshold;
+    const defaultMaxDistance =
+      config?.DELIVERY_MAX_DISTANCE_KM !== undefined
+        ? Number(config.DELIVERY_MAX_DISTANCE_KM).toFixed(2)
+        : DEFAULT_STORE_SETTINGS.deliveryMaxDistanceKm;
+    const defaultFallback =
+      config?.DELIVERY_FALLBACK_AMOUNT !== undefined
+        ? Number(config.DELIVERY_FALLBACK_AMOUNT).toFixed(2)
+        : DEFAULT_STORE_SETTINGS.deliveryFallbackAmount;
+    const defaultOriginLat =
+      initialSettings?.storeOriginLatitude !== undefined
+        ? initialSettings.storeOriginLatitude
+        : DEFAULT_STORE_SETTINGS.storeOriginLatitude;
+    const defaultOriginLng =
+      initialSettings?.storeOriginLongitude !== undefined
+        ? initialSettings.storeOriginLongitude
+        : DEFAULT_STORE_SETTINGS.storeOriginLongitude;
+    const defaultHours =
+      initialSettings?.businessHours !== undefined
+        ? initialSettings.businessHours
+        : (config?.NODE_ENV ?? process.env.NODE_ENV) === 'test'
+          ? TEST_BUSINESS_HOURS
+          : DEFAULT_STORE_SETTINGS.businessHours;
+
+    const defaultExplicit =
+      initialSettings?.hasExplicitDeliveryFeeFreeThreshold !== undefined
+        ? initialSettings.hasExplicitDeliveryFeeFreeThreshold
+        : initialSettings?.deliveryFeeFreeThreshold !== undefined;
+
     this.currentSettings = {
       ...DEFAULT_STORE_SETTINGS,
+      deliveryFeeMode: defaultMode,
+      deliveryFeeBaseAmount: defaultBase,
+      deliveryFeePerKmAmount: defaultPerKm,
+      deliveryFeeFreeThreshold: defaultThreshold,
+      hasExplicitDeliveryFeeFreeThreshold: defaultExplicit,
+      deliveryMaxDistanceKm: defaultMaxDistance,
+      deliveryFallbackAmount: defaultFallback,
+      storeOriginLatitude: defaultOriginLat,
+      storeOriginLongitude: defaultOriginLng,
+      businessHours: defaultHours,
       ...initialSettings,
       createdAt: now,
       updatedAt: now,
@@ -88,6 +147,63 @@ export class MemoryStoreSettingsRepository implements StoreSettingsRepository {
         data.timezone !== undefined
           ? data.timezone
           : this.currentSettings.timezone,
+
+      // Origin Coordinates (Phase 2)
+      storeOriginLatitude:
+        data.storeOriginLatitude !== undefined
+          ? data.storeOriginLatitude
+          : this.currentSettings.storeOriginLatitude,
+      storeOriginLongitude:
+        data.storeOriginLongitude !== undefined
+          ? data.storeOriginLongitude
+          : this.currentSettings.storeOriginLongitude,
+
+      // Delivery Pricing (Phase 2)
+      deliveryFeeMode:
+        data.deliveryFeeMode !== undefined
+          ? data.deliveryFeeMode
+          : this.currentSettings.deliveryFeeMode,
+      deliveryFeeBaseAmount:
+        data.deliveryFeeBaseAmount !== undefined
+          ? String(data.deliveryFeeBaseAmount)
+          : this.currentSettings.deliveryFeeBaseAmount,
+      deliveryFeePerKmAmount:
+        data.deliveryFeePerKmAmount !== undefined
+          ? String(data.deliveryFeePerKmAmount)
+          : this.currentSettings.deliveryFeePerKmAmount,
+      deliveryFeeFreeThreshold:
+        data.deliveryFeeFreeThreshold !== undefined
+          ? data.deliveryFeeFreeThreshold === null
+            ? null
+            : String(data.deliveryFeeFreeThreshold)
+          : data.hasExplicitDeliveryFeeFreeThreshold === false
+            ? null
+            : this.currentSettings.deliveryFeeFreeThreshold,
+      hasExplicitDeliveryFeeFreeThreshold:
+        data.hasExplicitDeliveryFeeFreeThreshold !== undefined
+          ? data.hasExplicitDeliveryFeeFreeThreshold
+          : data.deliveryFeeFreeThreshold !== undefined
+            ? true
+            : this.currentSettings.hasExplicitDeliveryFeeFreeThreshold,
+      deliveryMaxDistanceKm:
+        data.deliveryMaxDistanceKm !== undefined
+          ? String(data.deliveryMaxDistanceKm)
+          : this.currentSettings.deliveryMaxDistanceKm,
+      deliveryFallbackAmount:
+        data.deliveryFallbackAmount !== undefined
+          ? String(data.deliveryFallbackAmount)
+          : this.currentSettings.deliveryFallbackAmount,
+
+      // Ordering Switch (Phase 2)
+      isOrderingEnabled:
+        data.isOrderingEnabled !== undefined
+          ? data.isOrderingEnabled
+          : this.currentSettings.isOrderingEnabled,
+      orderingMessage:
+        data.orderingMessage !== undefined
+          ? data.orderingMessage
+          : this.currentSettings.orderingMessage,
+
       updatedAt: new Date(),
     };
 

@@ -83,6 +83,8 @@ Configure the following variables in `.env` (refer to `.env.example`):
 | `WHATSAPP_PHONE_NUMBER_ID`           | Meta WhatsApp Cloud Phone Number ID                             | `your_phone_id`                                                   |
 | `EMAIL_PROVIDER`                     | Transactional email provider (`CONSOLE`, `SMTP`, `RESEND`)      | `CONSOLE`                                                         |
 | `EMAIL_FROM`                         | Outgoing email sender address                                   | `Old Liquor <orders@oldliquor.com>`                               |
+| `STORE_ORDER_NOTIFICATION_EMAIL`     | Store admin destination for new order email alerts              | `admin-orders@oldliquor.com`                                      |
+| `STORE_CONTACT_NOTIFICATION_EMAIL`   | Store destination for customer contact inquiry alerts           | `admin-contact@oldliquor.com`                                     |
 | `SMTP_HOST` / `SMTP_PORT`            | SMTP server connection host and port                            | `smtp.mailgun.org` / `587`                                        |
 | `SMTP_USER` / `SMTP_PASSWORD`        | SMTP authentication credentials                                 | _Credentials_                                                     |
 | `RESEND_API_KEY`                     | Resend API key for Resend email provider                        | `re_...`                                                          |
@@ -431,24 +433,30 @@ The backend exposes 148 verified endpoints across 22 domains:
 
 ### 7.16 Admin Orders
 
-| Method  | Endpoint                       | Auth / Permission | Description                                   |
-| :------ | :----------------------------- | :---------------- | :-------------------------------------------- |
-| `GET`   | `/api/admin/orders`            | `orders.read`     | Paginated orders with status & date filters   |
-| `GET`   | `/api/admin/orders/:id`        | `orders.read`     | Order details with items, customer, delivery  |
-| `PATCH` | `/api/admin/orders/:id/status` | `orders.update`   | Update fulfillment status (`CONFIRMED`, etc.) |
-| `POST`  | `/api/admin/orders/:id/cancel` | `orders.update`   | Cancel order and release reserved stock       |
+| Method  | Endpoint                        | Auth / Permission | Description                                   |
+| :------ | :------------------------------ | :---------------- | :-------------------------------------------- |
+| `GET`   | `/api/admin/orders`             | `orders.read`     | Paginated orders with status & date filters   |
+| `GET`   | `/api/admin/orders/:id`         | `orders.read`     | Order details with items, customer, delivery  |
+| `GET`   | `/api/admin/orders/:id/invoice` | `orders.read`     | Download deterministic PDF tax invoice        |
+| `GET`   | `/api/admin/orders/:id/history` | `orders.read`     | Order status transition history & audit logs  |
+| `PATCH` | `/api/admin/orders/:id/status`  | `orders.status`   | Update fulfillment status (`CONFIRMED`, etc.) |
+| `POST`  | `/api/admin/orders/:id/cancel`  | `orders.status`   | Cancel order and release reserved stock       |
 
-### 7.17 Storefront & Admin Payments
+### 7.17 Storefront & Admin Payment Methods & Submissions
 
-| Method  | Endpoint                         | Auth / Permission | Description                                      |
-| :------ | :------------------------------- | :---------------- | :----------------------------------------------- |
-| `GET`   | `/api/payments/qr-config`        | Public            | Public QR code image & recipient info            |
-| `POST`  | `/api/payments/:paymentId/proof` | Public            | Upload customer bank transfer proof slip         |
-| `GET`   | `/api/admin/payments`            | `payments.read`   | Paginated payment list with verification filters |
-| `GET`   | `/api/admin/payments/:id`        | `payments.read`   | Single payment record with proof slip URL        |
-| `PATCH` | `/api/admin/payments/:id/verify` | `payments.update` | Approve or reject payment transaction            |
-| `GET`   | `/api/admin/payments/qr-config`  | `payments.read`   | Retrieve admin QR configuration                  |
-| `PUT`   | `/api/admin/payments/qr-config`  | `payments.update` | Update store payment QR image & bank details     |
+| Method  | Endpoint                                     | Auth / Permission            | Description                                             |
+| :------ | :------------------------------------------- | :--------------------------- | :------------------------------------------------------ |
+| `GET`   | `/api/payment-methods`                       | Public                       | Active payment methods (COD, Static QR)                 |
+| `GET`   | `/api/admin/payment-methods`                 | `payment-methods.read`       | Paginated admin payment methods list                    |
+| `POST`  | `/api/admin/payment-methods`                 | `payment-methods.create`     | Create payment method with optional QR image URL        |
+| `GET`   | `/api/admin/payment-methods/:id`             | `payment-methods.read`       | Single payment method details                           |
+| `PATCH` | `/api/admin/payment-methods/:id`             | `payment-methods.update`     | Update payment method details                           |
+| `POST`  | `/api/orders/:orderNumber/payment-proof`     | Public (Order Token)         | Submit payment slip (multipart file or Cloudinary JSON) |
+| `GET`   | `/api/admin/payment-submissions`             | `payment-submissions.read`   | Paginated payment submissions pending review            |
+| `GET`   | `/api/admin/payment-submissions/:id`         | `payment-submissions.read`   | Single payment proof detail with receipt image          |
+| `POST`  | `/api/admin/payment-submissions/:id/approve` | `payment-submissions.verify` | Approve customer payment submission                     |
+| `POST`  | `/api/admin/payment-submissions/:id/reject`  | `payment-submissions.verify` | Reject payment submission with mandatory reason         |
+| `POST`  | `/api/admin/payment-submissions/:id/review`  | `payment-submissions.verify` | Combined approve/reject action review                   |
 
 ### 7.18 Admin Customers
 
@@ -538,6 +546,16 @@ The backend exposes 148 verified endpoints across 22 domains:
 | `GET`  | `/api/admin/dashboard/best-sellers`           | `dashboard.read`  | Alias: best-selling products                     |
 | `GET`  | `/api/admin/dashboard/low-stock`              | `dashboard.read`  | Critical low-stock variants listing              |
 | `GET`  | `/api/admin/dashboard/inventory`              | `dashboard.read`  | Alias: critical low-stock variants               |
+
+### 7.25 Newsletter Module (Performance House Parity)
+
+| Method   | Endpoint                                   | Auth / Permission   | Description                                                                |
+| :------- | :----------------------------------------- | :------------------ | :------------------------------------------------------------------------- |
+| `POST`   | `/api/newsletter/subscribe`                | Public              | Subscribe email (normalizes, reactivates inactive, rate limited)           |
+| `POST`   | `/api/newsletter/unsubscribe`              | Public              | Unsubscribe email (normalizes, marks inactive, rate limited)               |
+| `GET`    | `/api/admin/newsletter/subscribers`        | `newsletter.read`   | List all subscribers ordered by subscribedAt desc with search filter       |
+| `GET`    | `/api/admin/newsletter/subscribers/active` | `newsletter.read`   | List active subscribers ordered by subscribedAt desc                       |
+| `DELETE` | `/api/admin/newsletter/subscribers/:id`    | `newsletter.delete` | Delete subscriber by UUID with audit log (`NEWSLETTER_SUBSCRIBER_DELETED`) |
 
 ---
 

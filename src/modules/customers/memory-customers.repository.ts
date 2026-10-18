@@ -113,7 +113,12 @@ export class MemoryCustomerRepository implements CustomerRepository {
     const items: CustomerListItem[] = all.map((c) => {
       const orders = this.orders.filter((o) => o.customerId === c.id);
 
-      const validOrders = orders.filter((o) => o.status !== 'CANCELLED');
+      const validOrders = orders.filter(
+        (o) =>
+          o.status !== 'CANCELLED' &&
+          o.status !== 'RETURNED' &&
+          o.paymentStatus !== 'REFUNDED',
+      );
       const totalSpentNum = validOrders.reduce(
         (sum, o) => sum + Number(o.total || 0),
         0,
@@ -216,7 +221,11 @@ export class MemoryCustomerRepository implements CustomerRepository {
         pendingOrderCount++;
       }
 
-      if (o.status !== 'CANCELLED') {
+      if (
+        o.status !== 'CANCELLED' &&
+        o.status !== 'RETURNED' &&
+        o.paymentStatus !== 'REFUNDED'
+      ) {
         totalSpentNum += Number(o.total || 0);
       }
     }

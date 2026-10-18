@@ -541,6 +541,7 @@ describe('Payment Methods Foundation (Task 17)', () => {
       phone: '+977-9841987654',
       deliveryAddress: 'Jhamsikhel, Lalitpur, Ward 3',
       email: 'sita@example.com',
+      coordinates: { latitude: 27.7172, longitude: 85.324 },
     };
 
     it('records paymentMethodCode on checkout and NEVER marks payment as paid (paymentStatus is PENDING)', async () => {
