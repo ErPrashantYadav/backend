@@ -1,6 +1,8 @@
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app';
+import { prisma } from '../src/lib/prisma';
+import { PrismaDashboardRepository } from '../src/modules/dashboard/dashboard.repository';
 import { createAdminAccessToken } from '../src/modules/auth/access-token';
 import type { AdminAuthRepository } from '../src/modules/auth/auth.types';
 import { MemoryCartRepository } from '../src/modules/cart/memory-cart.repository';
@@ -565,24 +567,27 @@ describe('Admin Dashboard & Sales Analytics API (Task 26)', () => {
       expect(paidPayment?.amount).toBe('7500.00'); // 2500 + 5000
     });
 
-    it('GET /sales returns time-series analytics points and supports date filters', async () => {
+    it('GET /sales returns time-series analytics points and supports date filters for day, week, and month', async () => {
       const { app, token } = setupDashboardFixture(
         ['dashboard.read'],
         mockOrders,
         mockVariants,
       );
 
-      const res = await request(app)
-        .get('/api/admin/dashboard/sales?groupBy=day')
-        .set('Authorization', `Bearer ${token}`);
+      for (const groupBy of ['day', 'week', 'month'] as const) {
+        const res = await request(app)
+          .get(`/api/admin/dashboard/sales?groupBy=${groupBy}`)
+          .set('Authorization', `Bearer ${token}`);
 
-      expect(res.status).toBe(200);
-      const data = res.body.data;
-      expect(data.groupBy).toBe('day');
-      expect(data.totalOrders).toBe(3); // 3 non-cancelled orders
-      expect(data.totalSales).toBe('14000.00');
-      expect(data.averageOrderValue).toBe('4666.67');
-      expect(data.points.length).toBeGreaterThan(0);
+        expect(res.status).toBe(200);
+        const data = res.body.data;
+        expect(data.groupBy).toBe(groupBy);
+        expect(data.totalOrders).toBe(3); // 3 non-cancelled orders
+        expect(data.totalSales).toBe('14000.00');
+        expect(data.averageOrderValue).toBe('4666.67');
+        expect(Array.isArray(data.points)).toBe(true);
+        expect(data.points.length).toBeGreaterThan(0);
+      }
     });
 
     it('GET /order-status-breakdown provides count and percentage per order status', async () => {
@@ -712,6 +717,49 @@ describe('Admin Dashboard & Sales Analytics API (Task 26)', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('PrismaDashboardRepository getSalesAnalytics regression', () => {
+    it('executes getSalesAnalytics query using allowlisted date_trunc fragments for day, week, and month without AST mismatch', async () => {
+      const prismaRepo = new PrismaDashboardRepository();
+      const querySpy = vi
+        .spyOn(prisma, '$queryRaw')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const startDate = new Date('2026-10-01T00:00:00.000Z');
+      const endDate = new Date('2026-10-18T00:00:00.000Z');
+
+      for (const groupBy of ['day', 'week', 'month'] as const) {
+        const result = await prismaRepo.getSalesAnalytics({
+          startDate,
+          endDate,
+          groupBy,
+        });
+        expect(result.groupBy).toBe(groupBy);
+        expect(result.totalOrders).toBe(0);
+        expect(result.totalSales).toBe('0.00');
+        expect(result.points).toEqual([]);
+      }
+
+      expect(querySpy).toHaveBeenCalledTimes(3);
+
+      for (let i = 0; i < 3; i++) {
+        const callArg = querySpy.mock.calls[i]?.[0] as unknown;
+        const sqlText = Array.isArray(callArg)
+          ? callArg.join('?')
+          : ((callArg as { sql?: string; text?: string; strings?: string[] })
+              ?.sql ??
+            (callArg as { text?: string })?.text ??
+            String(callArg));
+        expect(sqlText).toContain('date_trunc(');
+        expect(sqlText).toContain('GROUP BY date_trunc(');
+        expect(sqlText).toContain('ORDER BY date_trunc(');
+      }
+
+      querySpy.mockRestore();
     });
   });
 });

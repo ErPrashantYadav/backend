@@ -141,6 +141,13 @@ export class PrismaDashboardRepository implements DashboardRepository {
   }): Promise<SalesAnalyticsResult> {
     const { startDate, endDate, groupBy } = input;
 
+    const dateTruncUnits: Record<SalesGroupBy, Prisma.Sql> = {
+      day: Prisma.raw("'day'"),
+      week: Prisma.raw("'week'"),
+      month: Prisma.raw("'month'"),
+    };
+    const truncUnit = dateTruncUnits[groupBy] ?? dateTruncUnits.day;
+
     // Use PostgreSQL date_trunc for database aggregation
     const rawPoints = await prisma.$queryRaw<
       Array<{
@@ -150,14 +157,14 @@ export class PrismaDashboardRepository implements DashboardRepository {
       }>
     >`
       SELECT
-        to_char(date_trunc(${groupBy}, "createdAt"), 'YYYY-MM-DD') AS "period",
+        to_char(date_trunc(${truncUnit}, "createdAt"), 'YYYY-MM-DD') AS "period",
         COUNT(*)::int AS "orderCount",
         COALESCE(SUM("total"), 0)::numeric AS "totalSales"
       FROM "Order"
       WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
         AND "status" != 'CANCELLED'
-      GROUP BY date_trunc(${groupBy}, "createdAt")
-      ORDER BY date_trunc(${groupBy}, "createdAt") ASC
+      GROUP BY date_trunc(${truncUnit}, "createdAt")
+      ORDER BY date_trunc(${truncUnit}, "createdAt") ASC
     `;
 
     let totalOrders = 0;
